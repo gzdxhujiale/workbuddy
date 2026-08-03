@@ -101,7 +101,15 @@ export const LiquidSelect: React.FC<LiquidSelectProps> = ({
         aria-expanded={open}
         aria-controls={listId}
         aria-label={ariaLabel}
-        onClick={() => !disabled && setOpen((v) => !v)}
+        onClick={() => {
+          if (!disabled) {
+            if (!open) {
+              const up = updatePos();
+              setOpenUp(!!up);
+            }
+            setOpen((v) => !v);
+          }
+        }}
         className={clsx(
           'flex items-center justify-between gap-2 text-left transition-colors disabled:opacity-40',
           variant === 'pill' &&

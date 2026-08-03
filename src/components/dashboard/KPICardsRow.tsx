@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ClipboardList, Activity, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { useUIStore } from '@/store/useUIStore';
+import { useTasks } from '@/lib/queries';
 import { springSoft } from '@/lib/motion';
 import { LiquidModal } from '@/components/ui/LiquidModal';
 
 export const KPICardsRow: React.FC<{ onCardClick?: (t: string) => void }> = ({ onCardClick }) => {
-  const { tasks, setSelectedTask } = useApp();
+  const { data: tasks = [] } = useTasks();
+  const setSelectedTask = useUIStore(s => s.setSelectedTask);
   const liveCompleted = tasks.filter((t) => t.status === '已完成').length;
   const [open, setOpen] = useState<string | null>(null);
 

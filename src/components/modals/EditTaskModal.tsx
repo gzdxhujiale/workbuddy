@@ -1,13 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { Edit3, CheckCircle2, Trash2 } from 'lucide-react';
+import { Edit3, CheckCircle2, Trash2, Calendar } from 'lucide-react';
 import { Priority, TaskStatus } from '@/types';
-import { useApp } from '@/context/AppContext';
+import { useUIStore } from '@/store/useUIStore';
+import { useUpdateTask, useDeleteTask } from '@/lib/queries';
+import { formatForInput } from '@/utils/date';
 import { LiquidModal } from '@/components/ui/LiquidModal';
 import { LiquidSelect } from '@/components/ui/LiquidSelect';
 import { motion } from 'framer-motion';
 
 export const EditTaskModal: React.FC = () => {
-  const { editingTask, setEditingTask, updateTask, deleteTask } = useApp();
+  const editingTask = useUIStore(s => s.editingTask);
+  const setEditingTask = useUIStore(s => s.setEditingTask);
+  const updateTaskMutation = useUpdateTask();
+  const deleteTaskMutation = useDeleteTask();
+  
+  const updateTask = (id: string, updates: any) => updateTaskMutation.mutate({ id, updates });
+  const deleteTask = (id: string) => deleteTaskMutation.mutate(id);
   const [title, setTitle] = useState('');
   const [phase, setPhase] = useState<'需求评审' | '产品设计' | '开发实现' | '测试验证'>('需求评审');
   const [priority, setPriority] = useState<Priority>('高');
@@ -23,7 +31,7 @@ export const EditTaskModal: React.FC = () => {
     setPhase(editingTask.phase);
     setPriority(editingTask.priority);
     setStatus(editingTask.status);
-    setDeadline(editingTask.deadline);
+    setDeadline(formatForInput(editingTask.deadline));
     setAssignee(editingTask.assignee.name);
     setDescription(editingTask.description);
     setTagsInput(editingTask.tags.join(', '));
@@ -40,7 +48,7 @@ export const EditTaskModal: React.FC = () => {
       phase,
       priority,
       status,
-      deadline,
+      deadline: new Date(deadline).getTime(),
       assignee: { ...editingTask.assignee, name: assignee },
       description,
       tags: tagsInput.split(',').map((t) => t.trim()).filter(Boolean),
@@ -143,8 +151,8 @@ export const EditTaskModal: React.FC = () => {
             <input className={field} value={assignee} onChange={(e) => setAssignee(e.target.value)} />
           </div>
           <div>
-            <label className="block text-[11px] text-white/40 mb-1.5">截止时间</label>
-            <input className={field} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            <label className="block text-[11px] text-white/40 mb-1.5 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />截止时间</label>
+            <input type="datetime-local" className={field} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </div>
         </div>
         <div>

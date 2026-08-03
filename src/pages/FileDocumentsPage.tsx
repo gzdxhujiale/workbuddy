@@ -1,15 +1,19 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FileText, Search, UploadCloud, Download, Eye, Share2, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { LiquidModal } from '@/components/ui/LiquidModal';
 import { LiquidSelect } from '@/components/ui/LiquidSelect';
-import { useApp } from '@/context/AppContext';
+import { useFiles, useAddFile } from '@/lib/queries';
 import { useToast } from '@/components/ui/Toast';
 import { FileDoc } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
+import { formatDateFull } from '@/utils/date';
 
 export const FileDocumentsPage: React.FC = () => {
-  const { files, addFile } = useApp();
+  const { data: files = [] } = useFiles();
+  const addFileMutation = useAddFile();
+  const addFile = (f: any) => addFileMutation.mutate(f);
   const { show, ToastEl } = useToast();
   const [localFiles, setLocalFiles] = useState<FileDoc[]>([]);
   const allFiles = useMemo(() => [...localFiles, ...files], [localFiles, files]);
@@ -20,6 +24,28 @@ export const FileDocumentsPage: React.FC = () => {
   const [renameDoc, setRenameDoc] = useState<FileDoc | null>(null);
   const [renameTitle, setRenameTitle] = useState('');
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const activeMenuFile = useMemo(() => files.find((f) => f.id === menuId), [files, menuId]);
+
+  useEffect(() => {
+    if (menuId === null) return;
+    const handleClose = (e: MouseEvent) => {
+      const el = e.target instanceof Element ? e.target : (e.target as Node)?.parentElement;
+      if (el && (el.closest('.action-menu-trigger') || el.closest('.action-menu-content'))) {
+        return;
+      }
+      setMenuId(null);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuId(null);
+    };
+    document.addEventListener('mousedown', handleClose);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClose);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuId]);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadCategory, setUploadCategory] = useState('产品文档');
 
@@ -118,9 +144,18 @@ export const FileDocumentsPage: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setMenuId(menuId === file.id ? null : file.id);
+                        if (menuId === file.id) {
+                          setMenuId(null);
+                        } else {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPos({
+                            top: rect.bottom + 4,
+                            right: window.innerWidth - rect.right,
+                          });
+                          setMenuId(file.id);
+                        }
                       }}
-                      className="p-1 rounded-lg text-white/35 hover:text-white hover:bg-white/5"
+                      className="p-1 rounded-lg text-white/35 hover:text-white hover:bg-white/5 action-menu-trigger relative z-10 cursor-pointer"
                     >
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
@@ -137,7 +172,7 @@ export const FileDocumentsPage: React.FC = () => {
                 </div>
               </div>
               <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
-                <span className="text-[10px] font-mono text-white/30">{file.updatedAt}</span>
+                <span className="text-[10px] font-mono text-white/30">{formatDateFull(file.updatedAt)}</span>
                 <div className="flex items-center gap-1.5">
                   <button onClick={() => setPreviewId(file.id)} className="liquid-btn-ghost w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white" title="预览">
                     <Eye className="w-4 h-4" />
@@ -157,39 +192,60 @@ export const FileDocumentsPage: React.FC = () => {
                   </button>
                 </div>
               </div>
-
-              <AnimatePresence>
-                {menuId === file.id && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute right-3 top-12 z-20 p-1 liquid-glass min-w-[132px]"
-                  >
-                    <button
-                      onClick={() => {
-                        setRenameDoc(file);
-                        setRenameTitle(file.title);
-                        setMenuId(null);
-                      }}
-                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] text-white/70 hover:bg-white/5"
-                    >
-                      <Pencil className="w-3 h-3" /> 重命名
-                    </button>
-                    <button onClick={() => { setPreviewId(file.id); setMenuId(null); }} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] text-white/70 hover:bg-white/5">
-                      <Eye className="w-3 h-3" /> 预览
-                    </button>
-                    <button onClick={() => removeDoc(file)} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] text-rose-300 hover:bg-rose-500/10">
-                      <Trash2 className="w-3 h-3" /> 删除
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </GlassCard>
           ))}
         </div>
         {visible.length === 0 && <div className="py-16 text-center text-[12px] text-white/35">暂无匹配文档</div>}
       </div>
+
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {menuId !== null && activeMenuFile && (
+              <motion.div
+                key={activeMenuFile.id}
+                initial={{ opacity: 0, y: 4, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                style={{
+                  position: 'fixed',
+                  top: menuPos.top,
+                  right: menuPos.right,
+                  zIndex: 9999,
+                }}
+                className="p-1.5 liquid-glass min-w-[132px] action-menu-content shadow-[0_20px_50px_rgba(0,0,0,0.65)]"
+              >
+                <button
+                  onClick={() => {
+                    setRenameDoc(activeMenuFile);
+                    setRenameTitle(activeMenuFile.title);
+                    setMenuId(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] text-white/75 hover:bg-white/5 transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5 text-emerald-300" /> 重命名
+                </button>
+                <button
+                  onClick={() => {
+                    setPreviewId(activeMenuFile.id);
+                    setMenuId(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] text-white/75 hover:bg-white/5 transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" /> 预览
+                </button>
+                <button
+                  onClick={() => removeDoc(activeMenuFile)}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] text-rose-300 hover:bg-rose-500/10 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> 删除
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
       <LiquidModal
         open={showUpload}

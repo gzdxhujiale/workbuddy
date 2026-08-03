@@ -17,7 +17,7 @@ const items: CardDeckItem[] = [
     colorTheme: 'emerald',
     details: '包含核心需求定义、原型设计图纸及各模块验收报告全套资料。',
     author: 'Brandon',
-    updatedAt: '2025-05-24 16:30',
+    updatedAt: new Date('2025-05-24T16:30:00').getTime(),
   },
   {
     id: 'deck-2',
@@ -28,7 +28,7 @@ const items: CardDeckItem[] = [
     colorTheme: 'glass',
     details: '涵盖微服务链路拓扑、高可用容灾方案与数据库拆分规范。',
     author: 'Alex',
-    updatedAt: '2025-05-23 11:20',
+    updatedAt: new Date('2025-05-23T11:20:00').getTime(),
   },
   {
     id: 'deck-3',
@@ -39,7 +39,7 @@ const items: CardDeckItem[] = [
     colorTheme: 'glass',
     details: '针对30位核心客户的深度访谈与NPS净推荐值数据分析报告。',
     author: 'Sarah',
-    updatedAt: '2025-05-20 09:15',
+    updatedAt: new Date('2025-05-20T09:15:00').getTime(),
   },
   {
     id: 'deck-4',
@@ -50,7 +50,7 @@ const items: CardDeckItem[] = [
     colorTheme: 'glass',
     details: '包含全套RESTful & GraphQL API 签名机制与鉴权逻辑。',
     author: 'David',
-    updatedAt: '2025-05-19 14:00',
+    updatedAt: new Date('2025-05-19T14:00:00').getTime(),
   },
   {
     id: 'deck-5',
@@ -61,7 +61,7 @@ const items: CardDeckItem[] = [
     colorTheme: 'glass',
     details: '涵盖自动化回归测试套件、并发压力测试与安全漏洞排查项。',
     author: 'Elena',
-    updatedAt: '2025-05-18 17:45',
+    updatedAt: new Date('2025-05-18T17:45:00').getTime(),
   },
   {
     id: 'deck-6',
@@ -72,7 +72,7 @@ const items: CardDeckItem[] = [
     colorTheme: 'glass',
     details: '下半年AI智能化升级方向与生态拓展里程碑划分。',
     author: 'Brandon',
-    updatedAt: '2025-05-15 10:00',
+    updatedAt: new Date('2025-05-15T10:00:00').getTime(),
   },
   {
     id: 'deck-7',
@@ -83,7 +83,7 @@ const items: CardDeckItem[] = [
     colorTheme: 'glass',
     details: '全量产品规格与接口对齐清单。',
     author: 'Team',
-    updatedAt: '2025-05-14 12:00',
+    updatedAt: new Date('2025-05-14T12:00:00').getTime(),
   },
 ];
 

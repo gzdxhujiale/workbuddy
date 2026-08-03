@@ -16,7 +16,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, onA
   const [title, setTitle] = useState('');
   const [phase, setPhase] = useState<'需求评审' | '产品设计' | '开发实现' | '测试验证'>('需求评审');
   const [priority, setPriority] = useState<Priority>('高');
-  const [deadline, setDeadline] = useState('2025-05-30 18:00');
+  const [deadline, setDeadline] = useState('2025-05-30T18:00');
   const [assignee, setAssignee] = useState('Brandon');
   const [description, setDescription] = useState('');
   const [tagsInput, setTagsInput] = useState('评审, 需求, 关键路径');
@@ -31,10 +31,10 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, onA
       phase,
       priority,
       status: '进行中',
-      time: '今天 ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: Date.now(),
       assignee: { name: assignee, avatar: assignee.slice(0, 2).toUpperCase(), role: '产品经理' },
       project: 'WenXiBuddy 2.0',
-      deadline,
+      deadline: new Date(deadline).getTime(),
       description: description || '暂无详细描述信息。',
       tags: tagsInput.split(',').map((t) => t.trim()).filter(Boolean),
       aiSuggestions: ['建议关联历史类似项目文档', '根据历时数据推算，建议预留 15% 缓冲时间'],
@@ -114,7 +114,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, onA
           </div>
           <div>
             <label className="block text-[11px] text-white/40 mb-1.5">截止时间</label>
-            <input className={field} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            <input type="datetime-local" className={field} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </div>
         </div>
 

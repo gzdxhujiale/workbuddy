@@ -19,7 +19,7 @@ import {
   Cpu,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { useApp } from '@/context/AppContext';
+import { useUIStore } from '@/store/useUIStore';
 import { useToast } from '@/components/ui/Toast';
 import { springSoft } from '@/lib/motion';
 import { ViewTransition } from '@/components/ui/PageTransition';
@@ -73,7 +73,12 @@ function Toggle({
 }
 
 export const SettingsCenterPage: React.FC = () => {
-  const { glassBlur, setGlassBlur, accentColor, setAccentColor, enableConfetti, setEnableConfetti } = useApp();
+  const glassBlur = useUIStore(s => s.glassBlur);
+  const setGlassBlur = useUIStore(s => s.setGlassBlur);
+  const accentColor = useUIStore(s => s.accentColor);
+  const setAccentColor = useUIStore(s => s.setAccentColor);
+  const enableConfetti = useUIStore(s => s.enableConfetti);
+  const setEnableConfetti = useUIStore(s => s.setEnableConfetti);
   const { show, ToastEl } = useToast();
   const [tab, setTab] = useState<SettingsTab>('appearance');
 

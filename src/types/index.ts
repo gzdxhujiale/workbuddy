@@ -16,7 +16,7 @@ export interface TaskItem {
   title: string;
   priority: Priority;
   status: TaskStatus;
-  time: string; // e.g. "今天 10:00"
+  createdAt: number; // Unix timestamp
   phase: '需求评审' | '产品设计' | '开发实现' | '测试验证';
   assignee: {
     name: string;
@@ -24,7 +24,7 @@ export interface TaskItem {
     role: string;
   };
   project: string;
-  deadline: string;
+  deadline: number; // Unix timestamp
   description: string;
   tags: string[];
   aiSuggestions?: string[];
@@ -51,7 +51,7 @@ export interface CardDeckItem {
   colorTheme: 'emerald' | 'glass';
   details: string;
   author: string;
-  updatedAt: string;
+  updatedAt: number;
 }
 
 export interface TimelineRow {
@@ -72,7 +72,7 @@ export interface FileDoc {
   category: string;
   size: string;
   author: string;
-  updatedAt: string;
+  updatedAt: number;
   completion?: number;
   tags: string[];
 }

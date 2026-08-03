@@ -10,12 +10,21 @@ import {
   ShieldCheck,
   Check,
 } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { useUIStore } from '@/store/useUIStore';
+import { useUpdateTask } from '@/lib/queries';
 import { springSoft } from '@/lib/motion';
 import { LiquidModal } from '@/components/ui/LiquidModal';
+import { formatTimeRelative, formatDateFull } from '@/utils/date';
 
 export const AISmartDetailPanel: React.FC = () => {
-  const { selectedTask, completeTask, setEditingTask } = useApp();
+  const selectedTask = useUIStore(s => s.selectedTask);
+  const setEditingTask = useUIStore(s => s.setEditingTask);
+  const updateTaskMutation = useUpdateTask();
+  const completeTask = (id: string) => {
+    updateTaskMutation.mutate({ id, updates: { status: '已完成' } });
+    const triggerConfetti = useUIStore.getState().triggerConfetti;
+    triggerConfetti();
+  };
   const [showAiDetail, setShowAiDetail] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [toast, setToast] = useState('');
@@ -99,7 +108,7 @@ export const AISmartDetailPanel: React.FC = () => {
                 <Meta label="截止时间">
                   <span className="flex items-center gap-1.5 font-mono text-white/70">
                     <Calendar className="w-3.5 h-3.5 text-white/35" />
-                    {task.deadline}
+                    {formatDateFull(task.deadline)}
                   </span>
                 </Meta>
                 <Meta label="当前状态">
@@ -117,7 +126,7 @@ export const AISmartDetailPanel: React.FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <span className="text-white/35 pt-0.5">标签</span>
                   <div className="flex flex-wrap justify-end gap-1.5 max-w-[210px]">
-                    {task.tags.map((tag) => (
+                    {task.tags.map((tag: string) => (
                       <span key={tag} className="px-2 py-0.5 rounded-md text-[10px] bg-white/[0.04] border border-white/10 text-white/60">
                         {tag}
                       </span>

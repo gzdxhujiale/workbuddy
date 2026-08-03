@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Target,
@@ -20,10 +22,10 @@ import { NavTab } from '@/types';
 import { clsx } from 'clsx';
 import { LiquidModal } from '@/components/ui/LiquidModal';
 import { useToast } from '@/components/ui/Toast';
+import { useUIStore } from '@/store/useUIStore';
+import { useWorkspaces, useAddWorkspace } from '@/lib/queries';
 
 interface SidebarProps {
-  activeTab: NavTab;
-  onTabChange: (tab: NavTab) => void;
   onNewWorkspace?: () => void;
 }
 
@@ -38,31 +40,86 @@ const navItems: { id: NavTab; label: string; icon: React.ElementType; badge?: st
   { id: 'settings', label: '设置中心', icon: Settings },
 ];
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onNewWorkspace }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onNewWorkspace }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = location.pathname.replace('/', '') || 'tasks';
   const { show, ToastEl } = useToast();
   const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
-  const [workspaces, setWorkspaces] = useState(['产品研发中心', '设计协同空间', 'AI 创新实验室', '市场运营中心']);
-  const [selectedWorkspace, setSelectedWorkspace] = useState('产品研发中心');
+  const { data: workspaces = [] } = useWorkspaces();
+  const addWorkspaceMutation = useAddWorkspace();
+  const currentWorkspace = useUIStore(s => s.currentWorkspace);
+  const setCurrentWorkspace = useUIStore(s => s.setCurrentWorkspace);
   const [createWsOpen, setCreateWsOpen] = useState(false);
   const [wsName, setWsName] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState({ name: 'Brandon', role: '产品经理', email: 'brandon@wenxi.buddy' });
 
+  const wsBtnRef = useRef<HTMLButtonElement>(null);
+  const wsMenuRef = useRef<HTMLDivElement>(null);
+  const [wsMenuPos, setWsMenuPos] = useState({ bottom: 0, left: 0, width: 0 });
+
+  const updateWsMenuPos = () => {
+    if (wsBtnRef.current) {
+      const rect = wsBtnRef.current.getBoundingClientRect();
+      setWsMenuPos({
+        bottom: window.innerHeight - rect.top + 8,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!workspaceExpanded) return;
+    updateWsMenuPos();
+
+    const handleResizeOrScroll = () => updateWsMenuPos();
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        wsBtnRef.current?.contains(target) ||
+        wsMenuRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setWorkspaceExpanded(false);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setWorkspaceExpanded(false);
+    };
+
+    window.addEventListener('resize', handleResizeOrScroll);
+    window.addEventListener('scroll', handleResizeOrScroll, true);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('resize', handleResizeOrScroll);
+      window.removeEventListener('scroll', handleResizeOrScroll, true);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [workspaceExpanded]);
+
   const createWorkspace = (e: React.FormEvent) => {
     e.preventDefault();
     if (!wsName.trim()) return;
-    setWorkspaces((prev) => [...prev, wsName.trim()]);
-    setSelectedWorkspace(wsName.trim());
-    setWsName('');
-    setCreateWsOpen(false);
-    onNewWorkspace?.();
-    show(`工作区「${wsName.trim()}」已创建`);
+    addWorkspaceMutation.mutate(wsName.trim(), {
+      onSuccess: () => {
+        setCurrentWorkspace(wsName.trim());
+        setWsName('');
+        setCreateWsOpen(false);
+        onNewWorkspace?.();
+        show(`工作区「${wsName.trim()}」已创建`);
+      }
+    });
   };
 
   return (
     <>
       {ToastEl}
-      <aside className="liquid-glass h-full w-full min-w-0 min-h-0 flex flex-col justify-between p-3 sm:p-3.5 select-none overflow-hidden">
+      <aside className="liquid-glass liquid-nav-glass h-full w-full min-w-0 min-h-0 flex flex-col justify-between p-3 sm:p-3.5 select-none overflow-hidden">
         <div className="space-y-5 min-h-0 overflow-y-auto pr-0.5">
           <div className="flex items-center gap-2.5 px-1.5 pt-1">
             <div className="w-9 h-9 rounded-[12px] bg-gradient-to-br from-emerald-300 via-emerald-400 to-teal-500 flex items-center justify-center font-extrabold text-[#04120c] text-[13px] shadow-[0_0_24px_rgba(16,185,129,0.45)] border border-white/40">
@@ -76,12 +133,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onNewW
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
-                <button
+                <Link
                   key={item.id}
-                  onClick={() => onTabChange(item.id)}
+                  to={`/${item.id}`}
                   className={clsx(
                     'w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all duration-300 relative group',
-                    isActive ? 'text-white' : 'text-white/45 hover:text-white/80'
+                    isActive ? 'text-white font-semibold' : 'text-white/45 hover:text-white/80'
                   )}
                 >
                   {isActive && (
@@ -104,7 +161,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onNewW
                     )}
                     {isActive && <ChevronRight className="w-3.5 h-3.5 text-emerald-300/80" />}
                   </span>
-                </button>
+                </Link>
               );
             })}
           </nav>
@@ -124,44 +181,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onNewW
 
           <div className="relative">
             <button
-              onClick={() => setWorkspaceExpanded((v) => !v)}
+              ref={wsBtnRef}
+              onClick={() => {
+                if (!workspaceExpanded) {
+                  updateWsMenuPos();
+                }
+                setWorkspaceExpanded((v) => !v);
+              }}
               className="w-full liquid-pill flex items-center justify-between px-3 py-2.5 text-[12px] font-medium text-white/85"
             >
               <span className="flex items-center gap-2 truncate">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                <span className="truncate">{selectedWorkspace}</span>
+                <span className="truncate">{currentWorkspace}</span>
               </span>
               <ChevronDown className={clsx('w-3.5 h-3.5 text-white/40 transition-transform', workspaceExpanded && 'rotate-180')} />
             </button>
-
-            <AnimatePresence>
-              {workspaceExpanded && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                  className="absolute bottom-full left-0 right-0 mb-2 p-1.5 liquid-glass z-50 space-y-0.5"
-                >
-                  {workspaces.map((ws) => (
-                    <button
-                      key={ws}
-                      onClick={() => {
-                        setSelectedWorkspace(ws);
-                        setWorkspaceExpanded(false);
-                        show(`已切换到「${ws}」`);
-                      }}
-                      className={clsx(
-                        'w-full text-left px-3 py-2 rounded-xl text-[12px] flex items-center justify-between transition-colors',
-                        selectedWorkspace === ws ? 'bg-emerald-400/15 text-emerald-200' : 'text-white/60 hover:bg-white/5 hover:text-white'
-                      )}
-                    >
-                      <span>{ws}</span>
-                      {selectedWorkspace === ws && <UserCheck className="w-3.5 h-3.5" />}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
 
           <button
@@ -185,6 +219,48 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onNewW
           </button>
         </div>
       </aside>
+
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {workspaceExpanded && (
+              <motion.div
+                ref={wsMenuRef}
+                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                style={{
+                  position: 'fixed',
+                  bottom: wsMenuPos.bottom,
+                  left: wsMenuPos.left,
+                  width: wsMenuPos.width,
+                  zIndex: 100,
+                }}
+                className="p-1.5 liquid-glass space-y-0.5 shadow-[0_20px_50px_rgba(0,0,0,0.65)]"
+              >
+                {workspaces.map((ws) => (
+                  <button
+                    key={ws}
+                    type="button"
+                    onClick={() => {
+                      setCurrentWorkspace(ws);
+                      setWorkspaceExpanded(false);
+                      show(`已切换到「${ws}」`);
+                    }}
+                    className={clsx(
+                      'w-full text-left px-3 py-2 rounded-xl text-[12px] flex items-center justify-between transition-colors',
+                      currentWorkspace === ws ? 'bg-emerald-400/15 text-emerald-200' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                    )}
+                  >
+                    <span className="truncate">{ws}</span>
+                    {currentWorkspace === ws && <UserCheck className="w-3.5 h-3.5 shrink-0" />}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
       <LiquidModal
         open={createWsOpen}
@@ -259,7 +335,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onNewW
             type="button"
             onClick={() => {
               setProfileOpen(false);
-              onTabChange('settings');
+              navigate({ to: '/settings' });
             }}
             className="w-full h-10 rounded-full liquid-btn-ghost text-[12px] text-white/70"
           >

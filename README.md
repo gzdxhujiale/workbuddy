@@ -54,16 +54,16 @@
 
 ```bash
 # 安装依赖
-npm install
+pnpm install
 
 # 本地开发（默认 http://localhost:3000）
-npm run dev
+pnpm dev
 
 # 生产构建
-npm run build
+pnpm build
 
 # 预览构建产物
-npm run preview
+pnpm preview
 ```
 
 ---
@@ -100,7 +100,7 @@ DESIGN.md          # 设计系统真源（必读）
 
 ## ☁️ 部署
 
-`npm run build` 产物在 `dist/`，可托管到 Vercel / Netlify / Cloudflare Pages / OSS / Nginx。
+`pnpm build` 产物在 `dist/`，可托管到 Vercel / Netlify / Cloudflare Pages / OSS / Nginx。
 
 SPA 需 fallback 到 `index.html`：
 

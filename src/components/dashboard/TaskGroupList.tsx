@@ -2,13 +2,18 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ArrowUpDown, LayoutGrid } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { useApp } from '@/context/AppContext';
+import { useUIStore } from '@/store/useUIStore';
+import { useTasks } from '@/lib/queries';
 import { clsx } from 'clsx';
 import { listItemVariants, springSoft } from '@/lib/motion';
 import { LiquidSelect } from '@/components/ui/LiquidSelect';
+import { formatTimeRelative } from '@/utils/date';
 
 export const TaskGroupList: React.FC = () => {
-  const { tasks, selectedTask, setSelectedTask, setIsNewTaskOpen } = useApp();
+  const { data: tasks = [] } = useTasks();
+  const selectedTask = useUIStore(s => s.selectedTask);
+  const setSelectedTask = useUIStore(s => s.setSelectedTask);
+  const setIsNewTaskOpen = useUIStore(s => s.setIsNewTaskOpen);
   const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'assigned' | 'participated'>('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState<'priority' | 'time'>('priority');
@@ -163,7 +168,7 @@ export const TaskGroupList: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <StatusBadge type="priority" value={task.priority} />
-                              <span className="text-[10px] font-mono text-white/30 hidden sm:inline">{task.time}</span>
+                              <span className="text-[10px] font-mono text-white/30 hidden sm:inline">{formatTimeRelative(task.createdAt)}</span>
                             </div>
                           </motion.button>
                         );

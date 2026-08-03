@@ -6,10 +6,14 @@ import { CoverFlowDeck } from '@/components/dashboard/CoverFlowDeck';
 import { ProjectTimeline } from '@/components/dashboard/ProjectTimeline';
 import { AISmartDetailPanel } from '@/components/dashboard/AISmartDetailPanel';
 import { DocPreviewModal } from '@/components/modals/DocPreviewModal';
-import { useApp } from '@/context/AppContext';
+import { useUIStore } from '@/store/useUIStore';
+import { useTasks } from '@/lib/queries';
 
 export const TaskManagementPage: React.FC = () => {
-  const { setSelectedTask, selectedDoc, setSelectedDoc, tasks } = useApp();
+  const { data: tasks = [] } = useTasks();
+  const setSelectedTask = useUIStore(s => s.setSelectedTask);
+  const selectedDoc = useUIStore(s => s.selectedDoc);
+  const setSelectedDoc = useUIStore(s => s.setSelectedDoc);
 
   return (
     <div className="h-full min-h-0 flex flex-col">
