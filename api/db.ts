@@ -1,13 +1,17 @@
 import { createClient } from '@libsql/client/web';
 import dotenv from 'dotenv';
 
-dotenv.config();
+try {
+  dotenv.config();
+} catch (e) {
+  // Ignore in edge runtime where fs is unavailable
+}
 
 const rawUrl =
   process.env.TURSO_DB_URL ||
   process.env.VITE_TURSO_DB_URL ||
   (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.VITE_TURSO_DB_URL) ||
-  'file:local.db';
+  '';
 
 const dbUrl = String(rawUrl).replace(/^turso:\/\//, 'libsql://');
 

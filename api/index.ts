@@ -25,4 +25,8 @@ const routes = app
 
 export type AppType = typeof routes;
 
+export const config = {
+  runtime: 'edge',
+};
+
 export default app;
