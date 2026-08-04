@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Bell, Mail, Plus, ChevronDown, Command, FilePlus2, CalendarPlus, Upload } from 'lucide-react';
+import { Search, Bell, Mail, Plus, ChevronDown, Command, FilePlus2, CalendarPlus, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/store/useUIStore';
-import { useTasks, useAddFile } from '@/lib/queries';
+import { useTasks } from '@/lib/queries';
 import { NotificationsModal } from '@/components/modals/NotificationsModal';
 import { LiquidModal } from '@/components/ui/LiquidModal';
 import { TitleTransition } from '@/components/ui/PageTransition';
+import { clsx } from 'clsx';
 
 interface TopBarProps {
   title?: string;
@@ -19,11 +20,11 @@ export const TopBar: React.FC<TopBarProps> = ({
   subtitle = '高效规划 · 智能协同 · 结果驱动',
   titleKey = title,
 }) => {
-  const setIsNewTaskOpen = useUIStore(s => s.setIsNewTaskOpen);
-  const setSelectedTask = useUIStore(s => s.setSelectedTask);
+  const setIsNewTaskOpen = useUIStore((s) => s.setIsNewTaskOpen);
+  const setIsCreateDocOpen = useUIStore((s) => s.setIsCreateDocOpen);
+  const setIsCreateScheduleOpen = useUIStore((s) => s.setIsCreateScheduleOpen);
+  const setSelectedTask = useUIStore((s) => s.setSelectedTask);
   const { data: tasks = [] } = useTasks();
-  const addFileMutation = useAddFile();
-  const addFile = (f: any) => addFileMutation.mutate(f);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMail, setShowMail] = useState(false);
@@ -31,7 +32,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const [unreadCount, setUnreadCount] = useState(3);
   const [quickMsg, setQuickMsg] = useState('');
 
-  const createBtnRef = useRef<HTMLButtonElement>(null);
+  const createBtnRef = useRef<HTMLDivElement>(null);
   const createMenuRef = useRef<HTMLDivElement>(null);
   const [createMenuPos, setCreateMenuPos] = useState({ top: 0, right: 0 });
 
@@ -84,6 +85,27 @@ export const TopBar: React.FC<TopBarProps> = ({
           t.id.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
+
+  const getActionConfig = () => {
+    if (titleKey === 'files' || titleKey === 'knowledge') {
+      return {
+        label: '创建文档',
+        onClick: () => setIsCreateDocOpen(true),
+      };
+    }
+    if (titleKey === 'schedule') {
+      return {
+        label: '预约日程',
+        onClick: () => setIsCreateScheduleOpen(true),
+      };
+    }
+    return {
+      label: '新增任务',
+      onClick: () => setIsNewTaskOpen(true),
+    };
+  };
+
+  const actionConfig = getActionConfig();
 
   return (
     <>
@@ -162,21 +184,34 @@ export const TopBar: React.FC<TopBarProps> = ({
             <Mail className="w-4 h-4" />
           </button>
 
-          <div className="relative">
-            <button
+          <div className="relative flex items-center">
+            <div
               ref={createBtnRef}
-              onClick={() => {
-                if (!showCreateMenu) {
-                  updateCreateMenuPos();
-                }
-                setShowCreateMenu((v) => !v);
-              }}
-              className="liquid-btn-primary h-9 px-3.5 rounded-full text-[12px] font-bold flex items-center gap-1 whitespace-nowrap"
+              className="liquid-btn-primary h-9 rounded-full text-[12px] font-bold flex items-center p-0 overflow-hidden shadow-lg"
             >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span className="hidden sm:inline">新增任务</span>
-              <ChevronDown className="w-3 h-3 opacity-70" />
-            </button>
+              <button
+                type="button"
+                onClick={actionConfig.onClick}
+                className="h-full px-3.5 flex items-center gap-1.5 hover:bg-white/10 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span className="hidden sm:inline">{actionConfig.label}</span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!showCreateMenu) {
+                    updateCreateMenuPos();
+                  }
+                  setShowCreateMenu((v) => !v);
+                }}
+                className="h-full px-2 border-l border-white/20 flex items-center justify-center hover:bg-white/10 transition-colors"
+                title="更多新建选项"
+              >
+                <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform duration-200', showCreateMenu && 'rotate-180')} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -210,19 +245,16 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <button
                   onClick={() => {
                     setShowCreateMenu(false);
-                    addFile({ title: `快速文档 ${new Date().toLocaleTimeString()}`, category: '通用文档', tags: ['快速创建'] });
-                    setQuickMsg('已创建快速文档');
-                    window.setTimeout(() => setQuickMsg(''), 1800);
+                    setIsCreateDocOpen(true);
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] text-white/75 hover:bg-white/5 hover:text-white"
                 >
-                  <Upload className="w-3.5 h-3.5 text-cyan-300" /> 快速文档
+                  <BookOpen className="w-3.5 h-3.5 text-cyan-300" /> 创建文档
                 </button>
                 <button
                   onClick={() => {
                     setShowCreateMenu(false);
-                    setQuickMsg('请前往「日程管理」预约会议');
-                    window.setTimeout(() => setQuickMsg(''), 2000);
+                    setIsCreateScheduleOpen(true);
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] text-white/75 hover:bg-white/5 hover:text-white"
                 >

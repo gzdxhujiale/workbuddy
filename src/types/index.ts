@@ -5,7 +5,6 @@ export type NavTab =
   | 'schedule' 
   | 'collaboration' 
   | 'analytics' 
-  | 'knowledge' 
   | 'settings';
 
 export type Priority = '高' | '中' | '低' | '高优先级' | '紧急';

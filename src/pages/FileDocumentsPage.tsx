@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, Search, UploadCloud, Download, Eye, Share2, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
+import { FileText, Search, Download, Eye, Share2, Pencil, Trash2, MoreHorizontal, Plus } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { LiquidModal } from '@/components/ui/LiquidModal';
 import { LiquidSelect } from '@/components/ui/LiquidSelect';
@@ -10,7 +10,10 @@ import { FileDoc } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { formatDateFull } from '@/utils/date';
 
+import { useUIStore } from '@/store/useUIStore';
+
 export const FileDocumentsPage: React.FC = () => {
+  const setIsCreateDocOpen = useUIStore((s) => s.setIsCreateDocOpen);
   const { data: files = [] } = useFiles();
   const addFileMutation = useAddFile();
   const addFile = (f: any) => addFileMutation.mutate(f);
@@ -46,10 +49,43 @@ export const FileDocumentsPage: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [menuId]);
-  const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadCategory, setUploadCategory] = useState('产品文档');
 
-  const categories = ['全部', '产品文档', '设计规范', '技术文档', '测试文档', 'AI 算法', '通用文档'];
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadCategory, setUploadCategory] = useState('');
+  const [categories, setCategories] = useState<string[]>([
+    '全部',
+    '产品文档',
+    '设计规范',
+    '技术文档',
+    '测试文档',
+    'AI 算法',
+    '通用文档',
+  ]);
+
+  const handleOpenCreateModal = () => {
+    setUploadTitle('');
+    if (selectedCategory === '全部') {
+      setUploadCategory('');
+    } else {
+      setUploadCategory(selectedCategory);
+    }
+    setShowUpload(true);
+  };
+
+  const handleCreateCategory = (newCat: string) => {
+    if (!categories.includes(newCat)) {
+      setCategories((prev) => [...prev, newCat]);
+      show(`已新建分类：${newCat}`);
+    }
+  };
+
+  const categoryOptions = useMemo(() => {
+    const opts = categories
+      .filter((c) => c !== '全部')
+      .map((c) => ({ value: c, label: c }));
+    return [{ value: '', label: '未分类 (为空)' }, ...opts];
+  }, [categories]);
+
   const filteredFiles = useMemo(
     () =>
       allFiles.filter((f) => {
@@ -69,14 +105,12 @@ export const FileDocumentsPage: React.FC = () => {
       if (exists) return prev.map((p) => (p.id === renameDoc.id ? { ...p, title: renameTitle.trim() } : p));
       return [{ ...renameDoc, title: renameTitle.trim() }, ...prev];
     });
-    // also overlay files from context by local override list - simpler: push override
     setRenameDoc(null);
     show('文档已重命名');
   };
 
   const removeDoc = (doc: FileDoc) => {
     setLocalFiles((prev) => prev.filter((p) => p.id !== doc.id));
-    // hide context files by tracking deleted ids
     setDeletedIds((d) => [...d, doc.id]);
     setMenuId(null);
     show('文档已删除');
@@ -88,25 +122,8 @@ export const FileDocumentsPage: React.FC = () => {
   return (
     <div className="w-full h-full min-h-0 flex flex-col gap-4 pb-1">
       {ToastEl}
-      <div className="flex items-center justify-between gap-3 flex-nowrap shrink-0 overflow-x-auto">
-        <div className="shrink-0">
-          <h2 className="text-[18px] font-bold text-white tracking-tight flex items-center gap-2 whitespace-nowrap">
-            <FileText className="w-5 h-5 text-emerald-300" />
-            文件文档归档
-          </h2>
-          <p className="text-[11px] text-white/40 whitespace-nowrap">上传 · 预览 · 下载 · 重命名 · 分享 · 删除</p>
-        </div>
-        <button
-          onClick={() => setShowUpload(true)}
-          className="h-10 px-4 rounded-full liquid-btn-primary text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 ml-auto"
-        >
-          <UploadCloud className="w-4 h-4" />
-          上传新文档
-        </button>
-      </div>
-
-      <div className="flex items-center gap-3 flex-nowrap shrink-0 overflow-x-auto">
-        <div className="liquid-pill p-1 flex items-center gap-1 shrink-0 whitespace-nowrap">
+      <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap shrink-0">
+        <div className="liquid-pill p-1 flex items-center gap-1 shrink-0 whitespace-nowrap overflow-x-auto max-w-full">
           {categories.map((cat) => (
             <button
               key={cat}
@@ -119,14 +136,23 @@ export const FileDocumentsPage: React.FC = () => {
             </button>
           ))}
         </div>
-        <div className="relative w-56 sm:w-64 shrink-0 ml-auto">
-          <Search className="w-4 h-4 text-white/35 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索文档名称..."
-            className="liquid-pill w-full h-9 pl-9 pr-3 text-[12px] text-white placeholder:text-white/30 bg-transparent outline-none"
-          />
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <div className="relative w-48 sm:w-60 shrink-0">
+            <Search className="w-4 h-4 text-white/35 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索文档名称..."
+              className="liquid-pill w-full h-9 pl-9 pr-3 text-[12px] text-white placeholder:text-white/30 bg-transparent outline-none"
+            />
+          </div>
+          <button
+            onClick={() => setIsCreateDocOpen(true)}
+            className="h-9 px-4 rounded-full liquid-btn-primary text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            创建新文档
+          </button>
         </div>
       </div>
 
@@ -163,7 +189,7 @@ export const FileDocumentsPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-[13px] font-bold text-white line-clamp-2">{file.title}</h3>
-                  <p className="text-[11px] text-white/40 mt-1">分类: {file.category} · {file.author}</p>
+                  <p className="text-[11px] text-white/40 mt-1">分类: {file.category || '未分类'} · {file.author}</p>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {file.tags.map((t) => (
@@ -250,13 +276,13 @@ export const FileDocumentsPage: React.FC = () => {
       <LiquidModal
         open={showUpload}
         onClose={() => setShowUpload(false)}
-        title="上传新文档"
-        subtitle="归档到知识资产库"
-        icon={<UploadCloud className="w-5 h-5" />}
+        title="创建新文档"
+        subtitle="沉淀到团队知识库"
+        icon={<Plus className="w-5 h-5" />}
         footer={
           <div className="flex justify-end gap-2">
             <button onClick={() => setShowUpload(false)} className="h-10 px-4 rounded-full liquid-btn-ghost text-[12px] text-white/60">取消</button>
-            <button form="upload-form" type="submit" className="h-10 px-4 rounded-full liquid-btn-primary text-[12px] font-bold">确认上传</button>
+            <button form="upload-form" type="submit" className="h-10 px-4 rounded-full liquid-btn-primary text-[12px] font-bold">确认创建</button>
           </div>
         }
       >
@@ -266,17 +292,25 @@ export const FileDocumentsPage: React.FC = () => {
           onSubmit={(e) => {
             e.preventDefault();
             if (!uploadTitle.trim()) return;
-            addFile({ title: uploadTitle.trim(), category: uploadCategory, size: `${(Math.random() * 8 + 0.8).toFixed(1)} MB`, author: 'Brandon', tags: ['新增', uploadCategory] });
+            addFile({
+              title: uploadTitle.trim(),
+              category: uploadCategory,
+              size: `${(Math.random() * 8 + 0.8).toFixed(1)} MB`,
+              author: 'Brandon',
+              tags: uploadCategory ? ['新增', uploadCategory] : ['新增'],
+            });
             setUploadTitle('');
             setShowUpload(false);
-            show('文档已上传并归档');
+            show('知识文档已创建并归档');
           }}
         >
           <input required value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} placeholder="文档标题" className="liquid-input w-full px-3.5 py-2.5 rounded-xl text-[12px] text-white" />
           <LiquidSelect
             value={uploadCategory}
             onChange={setUploadCategory}
-            options={categories.filter((c) => c !== '全部').map((c) => ({ value: c, label: c }))}
+            options={categoryOptions}
+            allowCreate={true}
+            onCreateOption={handleCreateCategory}
           />
         </form>
       </LiquidModal>

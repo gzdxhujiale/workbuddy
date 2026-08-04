@@ -22,6 +22,8 @@ interface LiquidSelectProps {
   placement?: 'bottom' | 'top';
   disabled?: boolean;
   'aria-label'?: string;
+  allowCreate?: boolean;
+  onCreateOption?: (newVal: string) => void;
 }
 
 export const LiquidSelect: React.FC<LiquidSelectProps> = ({
@@ -34,8 +36,11 @@ export const LiquidSelect: React.FC<LiquidSelectProps> = ({
   placement = 'bottom',
   disabled,
   'aria-label': ariaLabel,
+  allowCreate,
+  onCreateOption,
 }) => {
   const [open, setOpen] = useState(false);
+  const [newOptionInput, setNewOptionInput] = useState('');
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -151,6 +156,29 @@ export const LiquidSelect: React.FC<LiquidSelectProps> = ({
                 }}
                 className="liquid-glass p-1.5 overflow-y-auto shadow-[0_20px_50px_rgba(0,0,0,0.65)]"
               >
+                {allowCreate && (
+                  <div className="p-1 mb-1 border-b border-white/10">
+                    <input
+                      type="text"
+                      value={newOptionInput}
+                      onChange={(e) => setNewOptionInput(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newOptionInput.trim()) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const newVal = newOptionInput.trim();
+                          onCreateOption?.(newVal);
+                          onChange(newVal);
+                          setNewOptionInput('');
+                          setOpen(false);
+                        }
+                      }}
+                      placeholder="+ 新建分类 (输入后回车)"
+                      className="w-full px-2.5 py-1.5 rounded-lg text-[11px] bg-white/10 border border-white/15 text-white placeholder:text-white/40 outline-none focus:border-emerald-400/50"
+                    />
+                  </div>
+                )}
                 {options.map((opt) => {
                   const active = opt.value === value;
                   return (

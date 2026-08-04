@@ -7,10 +7,11 @@ import { FileDocumentsPage } from '@/pages/FileDocumentsPage';
 import { ScheduleManagementPage } from '@/pages/ScheduleManagementPage';
 import { TeamCollaborationPage } from '@/pages/TeamCollaborationPage';
 import { AIAnalyticsPage } from '@/pages/AIAnalyticsPage';
-import { KnowledgeBasePage } from '@/pages/KnowledgeBasePage';
 import { SettingsCenterPage } from '@/pages/SettingsCenterPage';
 import { NewTaskModal } from '@/components/modals/NewTaskModal';
 import { EditTaskModal } from '@/components/modals/EditTaskModal';
+import { CreateDocModal } from '@/components/modals/CreateDocModal';
+import { CreateScheduleModal } from '@/components/modals/CreateScheduleModal';
 import { useUIStore } from '@/store/useUIStore';
 import { useAddTask } from '@/lib/queries';
 import { NavTab } from '@/types';
@@ -19,6 +20,10 @@ import React from 'react';
 function RootLayout() {
   const isNewTaskOpen = useUIStore((s) => s.isNewTaskOpen);
   const setIsNewTaskOpen = useUIStore((s) => s.setIsNewTaskOpen);
+  const isCreateDocOpen = useUIStore((s) => s.isCreateDocOpen);
+  const setIsCreateDocOpen = useUIStore((s) => s.setIsCreateDocOpen);
+  const isCreateScheduleOpen = useUIStore((s) => s.isCreateScheduleOpen);
+  const setIsCreateScheduleOpen = useUIStore((s) => s.setIsCreateScheduleOpen);
   const addTaskMutation = useAddTask();
 
   return (
@@ -34,6 +39,14 @@ function RootLayout() {
         isOpen={isNewTaskOpen}
         onClose={() => setIsNewTaskOpen(false)}
         onAddTask={(task) => addTaskMutation.mutate(task)}
+      />
+      <CreateDocModal
+        isOpen={isCreateDocOpen}
+        onClose={() => setIsCreateDocOpen(false)}
+      />
+      <CreateScheduleModal
+        isOpen={isCreateScheduleOpen}
+        onClose={() => setIsCreateScheduleOpen(false)}
       />
       <EditTaskModal />
     </div>
@@ -82,7 +95,7 @@ export const overviewRoute = createRoute({
 export const filesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/files',
-  component: withLayout(FileDocumentsPage, 'files', '文件归档', '归档沉淀 · 多维搜索与历史版本可溯'),
+  component: withLayout(FileDocumentsPage, 'files', '知识库', '归档沉淀 · 多维搜索与历史版本可溯'),
 });
 
 export const scheduleRoute = createRoute({
@@ -103,12 +116,6 @@ export const analyticsRoute = createRoute({
   component: withLayout(AIAnalyticsPage, 'analytics', '智能分析', 'AI 效能推演 · 链路瓶颈与风险评估'),
 });
 
-export const knowledgeRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/knowledge',
-  component: withLayout(KnowledgeBasePage, 'knowledge', '知识库', '沉淀最佳实践 · 团队 SOP 规格标准'),
-});
-
 export const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
@@ -123,7 +130,6 @@ const routeTree = rootRoute.addChildren([
   scheduleRoute,
   collaborationRoute,
   analyticsRoute,
-  knowledgeRoute,
   settingsRoute,
 ]);
 

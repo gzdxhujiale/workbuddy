@@ -16,6 +16,12 @@ interface UIState {
   isNewTaskOpen: boolean;
   setIsNewTaskOpen: (val: boolean) => void;
 
+  isCreateDocOpen: boolean;
+  setIsCreateDocOpen: (val: boolean) => void;
+
+  isCreateScheduleOpen: boolean;
+  setIsCreateScheduleOpen: (val: boolean) => void;
+
   editingTask: TaskItem | null;
   setEditingTask: (task: TaskItem | null) => void;
 
@@ -46,6 +52,12 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   isNewTaskOpen: false,
   setIsNewTaskOpen: (val) => set({ isNewTaskOpen: val }),
+
+  isCreateDocOpen: false,
+  setIsCreateDocOpen: (val) => set({ isCreateDocOpen: val }),
+
+  isCreateScheduleOpen: false,
+  setIsCreateScheduleOpen: (val) => set({ isCreateScheduleOpen: val }),
 
   editingTask: null,
   setEditingTask: (task) => set({ editingTask: task }),

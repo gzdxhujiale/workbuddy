@@ -25,11 +25,14 @@ import { LiquidSelect } from '@/components/ui/LiquidSelect';
 import { getEventStartHourDecimal, getEventEndHourDecimal, getEventDay, buildEventTimestamp } from '@/utils/date';
 import { ScheduleEvent } from '@/lib/queries';
 
+import { useUIStore } from '@/store/useUIStore';
+
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 8:00 - 19:00
 const WEEK_DAYS = [19, 20, 21, 22, 23, 24, 25]; // sample week containing 24
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 
 export const ScheduleManagementPage: React.FC = () => {
+  const setIsCreateScheduleOpen = useUIStore((s) => s.setIsCreateScheduleOpen);
   const { show, ToastEl } = useToast();
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
   const [viewDir, setViewDir] = useState(1);
@@ -230,7 +233,7 @@ export const ScheduleManagementPage: React.FC = () => {
           />
 
           <button
-            onClick={() => openCreate()}
+            onClick={() => setIsCreateScheduleOpen(true)}
             className="h-9 px-3.5 rounded-full liquid-btn-primary text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
