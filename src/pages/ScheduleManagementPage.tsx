@@ -103,21 +103,6 @@ export const ScheduleManagementPage: React.FC = () => {
     .filter((e) => getEventDay(e.startTime) === selectedDay)
     .sort((a, b) => a.startTime - b.startTime);
 
-  const openCreate = (day = selectedDay) => {
-    setForm({
-      title: '',
-      time: '10:00 - 11:00',
-      startHour: 10,
-      endHour: 11,
-      room: '线上会议室 Alpha',
-      priority: '高',
-      day,
-      attendees: 'Brandon',
-    });
-    setEditing(null);
-    setShowCreate(true);
-  };
-
   const openEdit = (evt: ScheduleEvent) => {
     setEditing(evt);
     setForm({
@@ -183,17 +168,7 @@ export const ScheduleManagementPage: React.FC = () => {
       {ToastEl}
 
       {/* 顶栏工具 — 单行 */}
-      <div className="flex items-center justify-between gap-3 flex-nowrap shrink-0 min-w-0 overflow-x-auto">
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="liquid-icon-well w-10 h-10 rounded-2xl flex items-center justify-center text-emerald-300">
-            <CalendarIcon className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-[18px] font-bold text-white tracking-tight whitespace-nowrap">日程与会议管理</h2>
-            <p className="text-[11px] text-white/40 whitespace-nowrap">月 / 周 / 日视图 · 预约 · 编辑 · 筛选</p>
-          </div>
-        </div>
-
+      <div className="flex items-center justify-end gap-3 flex-nowrap shrink-0 min-w-0 overflow-x-auto">
         <div className="flex items-center gap-2 shrink-0 ml-auto">
           <div className="liquid-pill p-1 flex items-center gap-0.5 whitespace-nowrap relative">
             {(['month', 'week', 'day'] as const).map((v) => (
@@ -231,14 +206,6 @@ export const ScheduleManagementPage: React.FC = () => {
               { value: '低', label: '低' },
             ]}
           />
-
-          <button
-            onClick={() => setIsCreateScheduleOpen(true)}
-            className="h-9 px-3.5 rounded-full liquid-btn-primary text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            预约新日程
-          </button>
         </div>
       </div>
 
@@ -282,7 +249,7 @@ export const ScheduleManagementPage: React.FC = () => {
                   selectedDay={selectedDay}
                   events={filteredEvents}
                   onSelectDay={setSelectedDay}
-                  onDayDoubleCreate={(d) => openCreate(d)}
+                  onDayDoubleCreate={() => {}}
                 />
               ) : view === 'week' ? (
                 <WeekView
@@ -299,17 +266,7 @@ export const ScheduleManagementPage: React.FC = () => {
                   month={targetDate.getMonth()}
                   events={dayEvents}
                   onSelectEvent={openEdit}
-                  onEmptySlot={(hour) => {
-                    setForm((f) => ({
-                      ...f,
-                      day: selectedDay,
-                      startHour: hour,
-                      endHour: hour + 1,
-                      time: `${String(hour).padStart(2, '0')}:00 - ${String(hour + 1).padStart(2, '0')}:00`,
-                    }));
-                    setEditing(null);
-                    setShowCreate(true);
-                  }}
+                  onEmptySlot={() => {}}
                 />
               )}
             </ViewTransition>
@@ -328,9 +285,6 @@ export const ScheduleManagementPage: React.FC = () => {
             {dayEvents.length === 0 && (
               <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-[12px] text-white/35 gap-3">
                 <p>当日暂无日程</p>
-                <button onClick={() => openCreate(selectedDay)} className="h-9 px-3 rounded-full liquid-btn-ghost text-[11px] text-white/60">
-                  + 在此日预约
-                </button>
               </div>
             )}
             {dayEvents.map((evt) => (
@@ -372,13 +326,6 @@ export const ScheduleManagementPage: React.FC = () => {
               </div>
             ))}
             </ViewTransition>
-          </div>
-
-          <div className="pt-3 mt-auto border-t border-white/[0.06] shrink-0 flex gap-2">
-            <button onClick={() => openCreate(selectedDay)} className="flex-1 h-10 rounded-full liquid-btn-primary text-[12px] font-bold flex items-center justify-center gap-1.5">
-              <Plus className="w-3.5 h-3.5" />
-              预约新日程
-            </button>
           </div>
         </GlassCard>
       </div>
@@ -425,15 +372,15 @@ export const ScheduleManagementPage: React.FC = () => {
           document.body
         )}
 
-      {/* 预约/编辑 — 液态玻璃弹窗 */}
+      {/* 编辑 — 液态玻璃弹窗 */}
       <LiquidModal
-        open={showCreate}
+        open={Boolean(editing)}
         onClose={() => {
           setShowCreate(false);
           setEditing(null);
         }}
-        title={editing ? '编辑日程' : '预约新日程'}
-        subtitle={editing ? `ID · ${editing.id}` : '高效排期 · 冲突预警'}
+        title="编辑日程"
+        subtitle={editing ? `ID · ${editing.id}` : ''}
         icon={<CalendarIcon className="w-5 h-5" />}
         footer={
           <div className="flex items-center justify-end gap-2">
@@ -448,7 +395,7 @@ export const ScheduleManagementPage: React.FC = () => {
               取消
             </button>
             <button type="submit" form="schedule-form" className="h-10 px-5 rounded-full liquid-btn-primary text-[12px] font-bold">
-              {editing ? '保存修改' : '确认创建'}
+              保存修改
             </button>
           </div>
         }
