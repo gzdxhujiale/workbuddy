@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Bell, Mail, Plus, ChevronDown, Command, FilePlus2, CalendarPlus, BookOpen } from 'lucide-react';
+import { Search, Bell, Mail, Plus, ChevronDown, Command, FilePlus2, CalendarPlus, BookOpen, UserCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/store/useUIStore';
 import { useTasks } from '@/lib/queries';
@@ -23,6 +23,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const setIsNewTaskOpen = useUIStore((s) => s.setIsNewTaskOpen);
   const setIsCreateDocOpen = useUIStore((s) => s.setIsCreateDocOpen);
   const setIsCreateScheduleOpen = useUIStore((s) => s.setIsCreateScheduleOpen);
+  const setIsInviteMemberOpen = useUIStore((s) => s.setIsInviteMemberOpen);
   const setSelectedTask = useUIStore((s) => s.setSelectedTask);
   const { data: tasks = [] } = useTasks();
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,6 +98,12 @@ export const TopBar: React.FC<TopBarProps> = ({
       return {
         label: '预约日程',
         onClick: () => setIsCreateScheduleOpen(true),
+      };
+    }
+    if (titleKey === 'collaboration' || titleKey === 'team' || title === '团队协作') {
+      return {
+        label: '邀请新成员',
+        onClick: () => setIsInviteMemberOpen(true),
       };
     }
     return {
@@ -259,6 +266,15 @@ export const TopBar: React.FC<TopBarProps> = ({
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] text-white/75 hover:bg-white/5 hover:text-white"
                 >
                   <CalendarPlus className="w-3.5 h-3.5 text-violet-300" /> 预约日程
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCreateMenu(false);
+                    setIsInviteMemberOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] text-white/75 hover:bg-white/5 hover:text-white"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-amber-300" /> 邀请新成员
                 </button>
               </motion.div>
             )}

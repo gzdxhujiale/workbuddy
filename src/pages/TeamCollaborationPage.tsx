@@ -47,22 +47,6 @@ export const TeamCollaborationPage: React.FC = () => {
   return (
     <div className="w-full min-h-full space-y-5 pb-4">
       {ToastEl}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-[20px] font-bold text-white tracking-tight flex items-center gap-2">
-            <Users className="w-5 h-5 text-emerald-300" />
-            团队协作矩阵
-          </h2>
-          <p className="text-[12px] text-white/40">实时协同状态 · 成员负载把控与任务协同流</p>
-        </div>
-        <button
-          onClick={() => setInviteOpen(true)}
-          className="h-10 px-4 rounded-full liquid-btn-primary text-[12px] font-bold flex items-center gap-1.5"
-        >
-          <UserCheck className="w-4 h-4" />
-          邀请新成员
-        </button>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
         {members.map((member, idx) => (

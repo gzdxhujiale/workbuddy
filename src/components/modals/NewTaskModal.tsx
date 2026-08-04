@@ -4,6 +4,7 @@ import { Priority, TaskItem } from '@/types';
 import confetti from 'canvas-confetti';
 import { LiquidModal } from '@/components/ui/LiquidModal';
 import { LiquidSelect } from '@/components/ui/LiquidSelect';
+import { useUIStore } from '@/store/useUIStore';
 import { motion } from 'framer-motion';
 
 interface NewTaskModalProps {
@@ -13,6 +14,7 @@ interface NewTaskModalProps {
 }
 
 export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, onAddTask }) => {
+  const setIsInviteMemberOpen = useUIStore((s) => s.setIsInviteMemberOpen);
   const [title, setTitle] = useState('');
   const [phase, setPhase] = useState<'需求评审' | '产品设计' | '开发实现' | '测试验证'>('需求评审');
   const [priority, setPriority] = useState<Priority>('高');
@@ -110,7 +112,25 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, onA
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] text-white/40 mb-1.5">负责人</label>
-            <input className={field} value={assignee} onChange={(e) => setAssignee(e.target.value)} />
+            <LiquidSelect
+              value={assignee}
+              onChange={(v) => {
+                if (v === '__invite__') {
+                  setIsInviteMemberOpen(true);
+                } else {
+                  setAssignee(v);
+                }
+              }}
+              options={[
+                { value: 'Brandon', label: 'Brandon (产品经理)' },
+                { value: 'David', label: 'David (前端架构师)' },
+                { value: 'Elena', label: 'Elena (UI/UX设计师)' },
+                { value: 'Sarah', label: 'Sarah (UX研究员)' },
+                { value: 'Alex', label: 'Alex (产品助理)' },
+                { value: 'Michael', label: 'Michael (后端工程师)' },
+                { value: '__invite__', label: '+ 邀请新成员...' },
+              ]}
+            />
           </div>
           <div>
             <label className="block text-[11px] text-white/40 mb-1.5">截止时间</label>

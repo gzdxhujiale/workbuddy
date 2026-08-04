@@ -22,6 +22,9 @@ interface UIState {
   isCreateScheduleOpen: boolean;
   setIsCreateScheduleOpen: (val: boolean) => void;
 
+  isInviteMemberOpen: boolean;
+  setIsInviteMemberOpen: (val: boolean) => void;
+
   editingTask: TaskItem | null;
   setEditingTask: (task: TaskItem | null) => void;
 
@@ -58,6 +61,9 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   isCreateScheduleOpen: false,
   setIsCreateScheduleOpen: (val) => set({ isCreateScheduleOpen: val }),
+
+  isInviteMemberOpen: false,
+  setIsInviteMemberOpen: (val) => set({ isInviteMemberOpen: val }),
 
   editingTask: null,
   setEditingTask: (task) => set({ editingTask: task }),

@@ -12,6 +12,7 @@ import { NewTaskModal } from '@/components/modals/NewTaskModal';
 import { EditTaskModal } from '@/components/modals/EditTaskModal';
 import { CreateDocModal } from '@/components/modals/CreateDocModal';
 import { CreateScheduleModal } from '@/components/modals/CreateScheduleModal';
+import { InviteMemberModal } from '@/components/modals/InviteMemberModal';
 import { useUIStore } from '@/store/useUIStore';
 import { useAddTask } from '@/lib/queries';
 import { NavTab } from '@/types';
@@ -24,6 +25,8 @@ function RootLayout() {
   const setIsCreateDocOpen = useUIStore((s) => s.setIsCreateDocOpen);
   const isCreateScheduleOpen = useUIStore((s) => s.isCreateScheduleOpen);
   const setIsCreateScheduleOpen = useUIStore((s) => s.setIsCreateScheduleOpen);
+  const isInviteMemberOpen = useUIStore((s) => s.isInviteMemberOpen);
+  const setIsInviteMemberOpen = useUIStore((s) => s.setIsInviteMemberOpen);
   const addTaskMutation = useAddTask();
 
   return (
@@ -47,6 +50,10 @@ function RootLayout() {
       <CreateScheduleModal
         isOpen={isCreateScheduleOpen}
         onClose={() => setIsCreateScheduleOpen(false)}
+      />
+      <InviteMemberModal
+        isOpen={isInviteMemberOpen}
+        onClose={() => setIsInviteMemberOpen(false)}
       />
       <EditTaskModal />
     </div>
