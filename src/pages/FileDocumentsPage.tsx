@@ -128,9 +128,8 @@ export const FileDocumentsPage: React.FC = () => {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${
-                selectedCategory === cat ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70'
-              }`}
+              className={`px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70'
+                }`}
             >
               {cat}
             </button>
@@ -146,13 +145,6 @@ export const FileDocumentsPage: React.FC = () => {
               className="liquid-pill w-full h-9 pl-9 pr-3 text-[12px] text-white placeholder:text-white/30 bg-transparent outline-none"
             />
           </div>
-          <button
-            onClick={() => setIsCreateDocOpen(true)}
-            className="h-9 px-4 rounded-full liquid-btn-primary text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            创建新文档
-          </button>
         </div>
       </div>
 
