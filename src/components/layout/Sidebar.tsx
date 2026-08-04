@@ -236,9 +236,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNewWorkspace }) => {
                 }}
                 className="p-1.5 liquid-glass space-y-0.5 shadow-[0_20px_50px_rgba(0,0,0,0.65)]"
               >
-                {workspaces.map((ws) => (
+                {workspaces.map((ws: string) => (
                   <button
                     key={ws}
+
                     type="button"
                     onClick={() => {
                       setCurrentWorkspace(ws);

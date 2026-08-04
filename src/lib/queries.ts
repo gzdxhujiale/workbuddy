@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { turso } from './db';
+import { apiClient } from './api-client';
 import { TaskItem, FileDoc } from '@/types';
 
 // Workspaces
@@ -7,6 +8,15 @@ export function useWorkspaces() {
   return useQuery({
     queryKey: ['workspaces'],
     queryFn: async () => {
+      try {
+        const res = await apiClient.api.workspaces.$get();
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) return json.data;
+        }
+      } catch (e) {
+        console.warn('Hono API fetch workspaces failed, fallback to direct DB:', e);
+      }
       const { rows } = await turso.execute('SELECT * FROM workspaces');
       return rows.map((r: any) => r.name as string);
     },
@@ -17,6 +27,15 @@ export function useAddWorkspace() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (name: string) => {
+      try {
+        const res = await apiClient.api.workspaces.$post({ json: { name } });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success) return name;
+        }
+      } catch (e) {
+        console.warn('Hono API add workspace failed, fallback to direct DB:', e);
+      }
       const id = `ws-${Date.now()}-${Math.random().toString(36).substring(7)}`;
       await turso.execute({
         sql: 'INSERT INTO workspaces (id, name) VALUES (?, ?)',
@@ -35,6 +54,15 @@ export function useTasks() {
   return useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
+      try {
+        const res = await apiClient.api.tasks.$get();
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) return json.data as TaskItem[];
+        }
+      } catch (e) {
+        console.warn('Hono API fetch tasks failed, fallback to direct DB:', e);
+      }
       const { rows } = await turso.execute('SELECT * FROM tasks ORDER BY priority DESC, deadline ASC');
       return rows.map((r: any) => ({
         id: r.id as string,
@@ -63,7 +91,32 @@ export function useAddTask() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (task: Partial<TaskItem>) => {
-      const id = task.id || `WXB-2025-${Math.floor(Math.random() * 900) + 100}`;
+      try {
+        if (task.title) {
+          const res = await apiClient.api.tasks.$post({
+            json: {
+              title: task.title,
+              priority: (task.priority as any) || '中',
+              status: (task.status as any) || '进行中',
+              phase: task.phase || '需求评审',
+              project: task.project || '通用空间',
+              description: task.description || '',
+              completionProgress: task.completionProgress || 0,
+              deadline: task.deadline,
+              tags: task.tags,
+              assignee: task.assignee,
+            }
+          });
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success) return json.id;
+          }
+        }
+      } catch (e) {
+        console.warn('Hono API add task failed, fallback to direct DB:', e);
+      }
+
+      const id = task.id || `WXB-${new Date().getFullYear()}-${Math.floor(Math.random() * 900) + 100}`;
       const tags = JSON.stringify(task.tags || ['新任务']);
       const aiSuggestions = JSON.stringify(task.aiSuggestions || []);
       const assignee = task.assignee || { name: 'Brandon', avatar: 'BR', role: '产品经理' };
@@ -91,6 +144,30 @@ export function useUpdateTask() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<TaskItem> }) => {
+      try {
+        const res = await apiClient.api.tasks[':id'].$patch({
+          param: { id },
+          json: {
+            status: updates.status as any,
+            completionProgress: updates.completionProgress,
+            deadline: updates.deadline,
+            title: updates.title,
+            priority: updates.priority as any,
+            phase: updates.phase,
+            project: updates.project,
+            description: updates.description,
+            tags: updates.tags,
+            assignee: updates.assignee,
+          }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success) return;
+        }
+      } catch (e) {
+        console.warn('Hono API update task failed, fallback to direct DB:', e);
+      }
+
       if (updates.status) {
         await turso.execute({
           sql: 'UPDATE tasks SET status = ? WHERE id = ?',
@@ -120,6 +197,12 @@ export function useDeleteTask() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      try {
+        const res = await apiClient.api.tasks[':id'].$delete({ param: { id } });
+        if (res.ok) return;
+      } catch (e) {
+        console.warn('Hono API delete task failed, fallback to direct DB:', e);
+      }
       await turso.execute({
         sql: 'DELETE FROM tasks WHERE id = ?',
         args: [id],
@@ -131,11 +214,20 @@ export function useDeleteTask() {
   });
 }
 
-// Files
+// Files / Documents
 export function useFiles() {
   return useQuery({
     queryKey: ['files'],
     queryFn: async () => {
+      try {
+        const res = await apiClient.api.documents.$get();
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) return json.data as FileDoc[];
+        }
+      } catch (e) {
+        console.warn('Hono API fetch documents failed, fallback to direct DB:', e);
+      }
       const { rows } = await turso.execute('SELECT * FROM files ORDER BY updated_at DESC');
       return rows.map((r: any) => ({
         id: r.id as string,
@@ -155,6 +247,27 @@ export function useAddFile() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (file: Partial<FileDoc>) => {
+      try {
+        if (file.title) {
+          const res = await apiClient.api.documents.$post({
+            json: {
+              title: file.title,
+              category: file.category || '通用文档',
+              size: file.size || '1.2 MB',
+              author: file.author || 'Brandon',
+              completion: file.completion || 100,
+              tags: file.tags,
+            }
+          });
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success) return json.id;
+          }
+        }
+      } catch (e) {
+        console.warn('Hono API add file failed, fallback to direct DB:', e);
+      }
+
       const id = `doc-${Date.now()}`;
       const tags = JSON.stringify(file.tags || ['新增']);
       
@@ -190,6 +303,15 @@ export function useScheduleEvents() {
   return useQuery({
     queryKey: ['schedule_events'],
     queryFn: async () => {
+      try {
+        const res = await apiClient.api.schedules.$get();
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) return json.data as ScheduleEvent[];
+        }
+      } catch (e) {
+        console.warn('Hono API fetch schedules failed, fallback to direct DB:', e);
+      }
       const { rows } = await turso.execute('SELECT * FROM schedule_events ORDER BY start_time ASC');
       return rows.map((r: any) => ({
         id: Number(r.id),
@@ -209,6 +331,23 @@ export function useAddScheduleEvent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (event: Omit<ScheduleEvent, 'id'>) => {
+      try {
+        const res = await apiClient.api.schedules.$post({
+          json: {
+            title: event.title,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            room: event.room,
+            priority: event.priority as any,
+            attendees: event.attendees,
+            status: event.status as any,
+          }
+        });
+        if (res.ok) return;
+      } catch (e) {
+        console.warn('Hono API add schedule failed, fallback to direct DB:', e);
+      }
+
       await turso.execute({
         sql: 'INSERT INTO schedule_events (title, start_time, end_time, room, priority, attendees, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
         args: [
@@ -227,6 +366,24 @@ export function useUpdateScheduleEvent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, updates }: { id: number; updates: Partial<ScheduleEvent> }) => {
+      try {
+        const res = await apiClient.api.schedules[':id'].$patch({
+          param: { id: String(id) },
+          json: {
+            title: updates.title,
+            startTime: updates.startTime,
+            endTime: updates.endTime,
+            room: updates.room,
+            priority: updates.priority as any,
+            attendees: updates.attendees,
+            status: updates.status as any,
+          }
+        });
+        if (res.ok) return;
+      } catch (e) {
+        console.warn('Hono API update schedule failed, fallback to direct DB:', e);
+      }
+
       const keys = Object.keys(updates);
       if (keys.length === 0) return;
       
@@ -253,6 +410,15 @@ export function useDeleteScheduleEvent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
+      try {
+        const res = await apiClient.api.schedules[':id'].$delete({
+          param: { id: String(id) }
+        });
+        if (res.ok) return;
+      } catch (e) {
+        console.warn('Hono API delete schedule failed, fallback to direct DB:', e);
+      }
+
       await turso.execute({
         sql: 'DELETE FROM schedule_events WHERE id = ?',
         args: [id],

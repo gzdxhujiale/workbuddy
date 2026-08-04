@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@hono/zod-validator':
+    specifier: ^0.9.0
+    version: 0.9.0(hono@4.13.0)(zod@4.4.3)
   '@libsql/client':
     specifier: ^0.17.4
     version: 0.17.4
@@ -26,6 +29,9 @@ dependencies:
   framer-motion:
     specifier: ^12.4.7
     version: 12.43.0(react-dom@19.2.8)(react@19.2.8)
+  hono:
+    specifier: ^4.13.0
+    version: 4.13.0
   lucide-react:
     specifier: ^0.475.0
     version: 0.475.0(react@19.2.8)
@@ -38,6 +44,9 @@ dependencies:
   tailwind-merge:
     specifier: ^3.0.1
     version: 3.6.0
+  zod:
+    specifier: ^4.4.3
+    version: 4.4.3
   zustand:
     specifier: ^5.0.14
     version: 5.0.14(@types/react@19.2.18)(react@19.2.8)
@@ -488,6 +497,16 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@hono/zod-validator@0.9.0(hono@4.13.0)(zod@4.4.3):
+    resolution: {integrity: sha512-n0ZSXmCiHVIp4Y5wlOOyZCeTd/rsawA/qW1cipB8QOYKZ9N8Tk0nZUZCXho9cu374AN4JpDNKioNKBJ/W+LBug==}
+    peerDependencies:
+      hono: '>=4.11.2'
+      zod: ^3.25.0 || ^4.0.0
+    dependencies:
+      hono: 4.13.0
+      zod: 4.4.3
+    dev: false
 
   /@jridgewell/gen-mapping@0.3.13:
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -1336,6 +1355,11 @@ packages:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
     dev: true
 
+  /hono@4.13.0:
+    resolution: {integrity: sha512-jhunvfHWxd7J5EFfSgH4xsYJzSe/lfqbUCxiyyeaQasUsXeEHXtzVid+7EOGByc5JnFa23SSFL3Y2RV/z1T+eQ==}
+    engines: {node: '>=16.9.0'}
+    dev: false
+
   /isbot@5.2.1:
     resolution: {integrity: sha512-dJ+LpKyClQZ7NG+j3OensC/mAZkGpukE9YUrgPYvAZj2doVL0edfDgywTUh5CXa0o+nW9a1V9e5+CJTX8+SxRw==}
     engines: {node: '>=18'}
@@ -1780,6 +1804,10 @@ packages:
   /yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
     dev: true
+
+  /zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+    dev: false
 
   /zustand@5.0.14(@types/react@19.2.18)(react@19.2.8):
     resolution: {integrity: sha512-/8tAspM5LMPr28b3fwLYrtdj77ECpfZviaP75CMTnwO8ISyaE4GDIG/9rDDYq/cH9D2Xw2A2RXglLInmVBQB/g==}
