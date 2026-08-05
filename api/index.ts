@@ -7,6 +7,7 @@ import { tasksRouter } from './routes/tasks.js';
 import { documentsRouter } from './routes/documents.js';
 import { workspacesRouter } from './routes/workspaces.js';
 import { schedulesRouter } from './routes/schedules.js';
+import { timeTasksRouter } from './routes/time-tasks.js';
 
 export const config = {
   runtime: 'edge',
@@ -33,7 +34,8 @@ const routes = app
   .route('/tasks', tasksRouter)
   .route('/documents', documentsRouter)
   .route('/workspaces', workspacesRouter)
-  .route('/schedules', schedulesRouter);
+  .route('/schedules', schedulesRouter)
+  .route('/time-tasks', timeTasksRouter);
 
 export type AppType = typeof routes;
 export { app };

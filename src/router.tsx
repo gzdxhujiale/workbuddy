@@ -5,6 +5,7 @@ import { TaskManagementPage } from '@/pages/TaskManagementPage';
 import { ProjectOverviewPage } from '@/pages/ProjectOverviewPage';
 import { KnowledgeBasePage } from '@/pages/KnowledgeBasePage';
 import { ScheduleManagementPage } from '@/pages/ScheduleManagementPage';
+import { TimeManagementPage } from '@/pages/TimeManagementPage';
 import { TeamCollaborationPage } from '@/pages/TeamCollaborationPage';
 import { AIAnalyticsPage } from '@/pages/AIAnalyticsPage';
 import { SettingsCenterPage } from '@/pages/SettingsCenterPage';
@@ -111,6 +112,12 @@ export const scheduleRoute = createRoute({
   component: withLayout(ScheduleManagementPage, 'schedule', '日程管理', '智能日历 · 会议排期与冲突预警'),
 });
 
+export const timeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/time',
+  component: withLayout(TimeManagementPage, 'time', '时间管理', '时间规划 · 专注追踪 · 沉浸提效'),
+});
+
 export const collaborationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/collaboration',
@@ -135,6 +142,7 @@ const routeTree = rootRoute.addChildren([
   overviewRoute,
   knowledgeRoute,
   scheduleRoute,
+  timeRoute,
   collaborationRoute,
   analyticsRoute,
   settingsRoute,

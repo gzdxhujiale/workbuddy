@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useScheduleEvents, useAddScheduleEvent, useUpdateScheduleEvent, useDeleteScheduleEvent } from '@/lib/queries';
@@ -6,45 +6,31 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  Plus,
   Clock,
-  Video,
   MoreHorizontal,
   Pencil,
   Trash2,
   MapPin,
   Users,
-  Filter,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { LiquidModal } from '@/components/ui/LiquidModal';
 import { useToast } from '@/components/ui/Toast';
-import { springSoft } from '@/lib/motion';
 import { ViewTransition } from '@/components/ui/PageTransition';
 import { LiquidSelect } from '@/components/ui/LiquidSelect';
-import { getEventStartHourDecimal, getEventEndHourDecimal, getEventDay, buildEventTimestamp } from '@/utils/date';
+import { getEventStartHourDecimal, getEventEndHourDecimal, buildEventTimestamp } from '@/utils/date';
 import { ScheduleEvent } from '@/lib/queries';
 
-import { useUIStore } from '@/store/useUIStore';
-
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 8:00 - 19:00
-const WEEK_DAYS = [19, 20, 21, 22, 23, 24, 25]; // sample week containing 24
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 
 export const ScheduleManagementPage: React.FC = () => {
-  const setIsCreateScheduleOpen = useUIStore((s) => s.setIsCreateScheduleOpen);
   const { show, ToastEl } = useToast();
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
   const [viewDir, setViewDir] = useState(1);
   const viewOrder = { month: 0, week: 1, day: 2 } as const;
-  const [monthOffset, setMonthOffset] = useState(0);
 
-  const now = useMemo(() => new Date(), []);
-  const targetDate = useMemo(() => {
-    return new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
-  }, [monthOffset, now]);
-
-  const [selectedDay, setSelectedDay] = useState(now.getDate());
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [priorityFilter, setPriorityFilter] = useState<'all' | '高' | '中' | '低'>('all');
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<ScheduleEvent | null>(null);
@@ -76,6 +62,7 @@ export const ScheduleManagementPage: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [menuId]);
+
   const [form, setForm] = useState({
     title: '',
     time: '10:00 - 11:00',
@@ -83,36 +70,90 @@ export const ScheduleManagementPage: React.FC = () => {
     endHour: 11,
     room: '线上会议室 Alpha',
     priority: '高' as '高' | '中' | '低',
-    day: now.getDate(),
+    day: currentDate.getDate(),
     attendees: 'Brandon',
   });
+
   const { data: events = [] } = useScheduleEvents();
   const activeMenuEvt = useMemo(() => events.find((e) => String(e.id) === String(menuId)), [events, menuId]);
   const addEventMutation = useAddScheduleEvent();
   const updateEventMutation = useUpdateScheduleEvent();
   const deleteEventMutation = useDeleteScheduleEvent();
 
-  const monthLabel = `${targetDate.getFullYear()}年 ${targetDate.getMonth() + 1}月`;
+  const monthLabel = `${currentDate.getFullYear()}年 ${currentDate.getMonth() + 1}月`;
+  const prevTitle = view === 'month' ? '上一月' : view === 'week' ? '上一周' : '上一天';
+  const nextTitle = view === 'month' ? '下一月' : view === 'week' ? '下一周' : '下一天';
+
+  const handlePrev = () => {
+    if (view === 'month') {
+      setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, Math.min(prev.getDate(), new Date(prev.getFullYear(), prev.getMonth(), 0).getDate())));
+    } else if (view === 'week') {
+      setCurrentDate((prev) => {
+        const next = new Date(prev);
+        next.setDate(prev.getDate() - 7);
+        return next;
+      });
+    } else if (view === 'day') {
+      setCurrentDate((prev) => {
+        const next = new Date(prev);
+        next.setDate(prev.getDate() - 1);
+        return next;
+      });
+    }
+  };
+
+  const handleNext = () => {
+    if (view === 'month') {
+      setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, Math.min(prev.getDate(), new Date(prev.getFullYear(), prev.getMonth() + 2, 0).getDate())));
+    } else if (view === 'week') {
+      setCurrentDate((prev) => {
+        const next = new Date(prev);
+        next.setDate(prev.getDate() + 7);
+        return next;
+      });
+    } else if (view === 'day') {
+      setCurrentDate((prev) => {
+        const next = new Date(prev);
+        next.setDate(prev.getDate() + 1);
+        return next;
+      });
+    }
+  };
+
+  const goToday = () => {
+    setCurrentDate(new Date());
+    show('已回到今天');
+  };
 
   const filteredEvents = useMemo(
     () => events.filter((e) => priorityFilter === 'all' || e.priority === priorityFilter),
     [events, priorityFilter]
   );
 
-  const dayEvents = filteredEvents
-    .filter((e) => getEventDay(e.startTime) === selectedDay)
-    .sort((a, b) => a.startTime - b.startTime);
+  const dayEvents = useMemo(() => {
+    return filteredEvents
+      .filter((e) => {
+        const d = new Date(e.startTime);
+        return (
+          d.getFullYear() === currentDate.getFullYear() &&
+          d.getMonth() === currentDate.getMonth() &&
+          d.getDate() === currentDate.getDate()
+        );
+      })
+      .sort((a, b) => a.startTime - b.startTime);
+  }, [filteredEvents, currentDate]);
 
   const openEdit = (evt: ScheduleEvent) => {
     setEditing(evt);
+    const evtDate = new Date(evt.startTime);
     setForm({
       title: evt.title,
-      time: '10:00 - 11:00', // We can derive this if needed
+      time: `${fmtHour(getEventStartHourDecimal(evt.startTime))} - ${fmtHour(getEventEndHourDecimal(evt.endTime))}`,
       startHour: getEventStartHourDecimal(evt.startTime),
       endHour: getEventEndHourDecimal(evt.endTime),
       room: evt.room,
       priority: evt.priority,
-      day: getEventDay(evt.startTime),
+      day: evtDate.getDate(),
       attendees: evt.attendees.join(', '),
     });
     setShowCreate(true);
@@ -125,8 +166,8 @@ export const ScheduleManagementPage: React.FC = () => {
     const payload: ScheduleEvent = {
       id: editing?.id ?? Date.now(),
       title: form.title.trim(),
-      startTime: buildEventTimestamp(form.day, form.startHour, targetDate.getFullYear(), targetDate.getMonth()),
-      endTime: buildEventTimestamp(form.day, form.endHour, targetDate.getFullYear(), targetDate.getMonth()),
+      startTime: buildEventTimestamp(form.day, form.startHour, currentDate.getFullYear(), currentDate.getMonth()),
+      endTime: buildEventTimestamp(form.day, form.endHour, currentDate.getFullYear(), currentDate.getMonth()),
       room: form.room,
       priority: form.priority,
       attendees: form.attendees.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
@@ -141,7 +182,7 @@ export const ScheduleManagementPage: React.FC = () => {
         onSuccess: () => show('日程已创建')
       });
     }
-    setSelectedDay(form.day);
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), form.day));
     setShowCreate(false);
     setEditing(null);
   };
@@ -153,12 +194,6 @@ export const ScheduleManagementPage: React.FC = () => {
         show('日程已删除');
       }
     });
-  };
-
-  const goToday = () => {
-    setMonthOffset(0);
-    setSelectedDay(now.getDate());
-    show('已回到今天');
   };
 
   const field = 'liquid-input w-full px-3.5 py-2.5 rounded-xl text-[12px] text-white';
@@ -221,9 +256,9 @@ export const ScheduleManagementPage: React.FC = () => {
             </div>
             <div className="flex items-center gap-1 text-white/50 shrink-0">
               <button
-                onClick={() => setMonthOffset((v) => v - 1)}
-                className="p-1.5 rounded-lg hover:bg-white/5 hover:text-white"
-                title="上一月"
+                onClick={handlePrev}
+                className="p-1.5 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+                title={prevTitle}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -231,9 +266,9 @@ export const ScheduleManagementPage: React.FC = () => {
                 今天
               </button>
               <button
-                onClick={() => setMonthOffset((v) => v + 1)}
-                className="p-1.5 rounded-lg hover:bg-white/5 hover:text-white"
-                title="下一月"
+                onClick={handleNext}
+                className="p-1.5 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+                title={nextTitle}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -244,26 +279,21 @@ export const ScheduleManagementPage: React.FC = () => {
             <ViewTransition viewKey={view} direction={viewDir} className="h-full min-h-0 overflow-auto">
               {view === 'month' ? (
                 <MonthView
-                  year={targetDate.getFullYear()}
-                  month={targetDate.getMonth()}
-                  selectedDay={selectedDay}
+                  currentDate={currentDate}
                   events={filteredEvents}
-                  onSelectDay={setSelectedDay}
+                  onSelectDay={(d) => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), d))}
                   onDayDoubleCreate={() => {}}
                 />
               ) : view === 'week' ? (
                 <WeekView
-                  year={targetDate.getFullYear()}
-                  month={targetDate.getMonth()}
-                  selectedDay={selectedDay}
+                  currentDate={currentDate}
                   events={filteredEvents}
-                  onSelectDay={setSelectedDay}
+                  onSelectDate={(d) => setCurrentDate(d)}
                   onSelectEvent={openEdit}
                 />
               ) : (
                 <DayView
-                  day={selectedDay}
-                  month={targetDate.getMonth()}
+                  currentDate={currentDate}
                   events={dayEvents}
                   onSelectEvent={openEdit}
                   onEmptySlot={() => {}}
@@ -276,55 +306,55 @@ export const ScheduleManagementPage: React.FC = () => {
         {/* 右侧详情 — 通高，底对齐操作 */}
         <GlassCard className="p-4 sm:p-5 flex flex-col min-h-0 h-full overflow-hidden">
           <div className="flex items-center justify-between shrink-0 pb-3 border-b border-white/[0.06]">
-            <h3 className="text-[13px] font-bold text-white">{targetDate.getMonth() + 1}月{selectedDay}日 · 日程</h3>
+            <h3 className="text-[13px] font-bold text-white">{currentDate.getMonth() + 1}月{currentDate.getDate()}日 · 日程</h3>
             <span className="text-[11px] text-emerald-300 font-mono">{dayEvents.length} 项</span>
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 py-3">
-            <ViewTransition viewKey={selectedDay} className="space-y-2.5">
-            {dayEvents.length === 0 && (
-              <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-[12px] text-white/35 gap-3">
-                <p>当日暂无日程</p>
-              </div>
-            )}
-            {dayEvents.map((evt) => (
-              <div key={evt.id} className="p-3 rounded-2xl bg-black/25 border border-white/[0.06] space-y-2 relative group">
-                <div className="flex items-start justify-between gap-2">
-                  <button onClick={() => openEdit(evt)} className="text-left min-w-0">
-                    <div className="text-[12px] font-bold text-white leading-snug">{evt.title}</div>
-                    <div className="text-[10px] text-white/35 mt-0.5">{evt.status}</div>
-                  </button>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-300 border border-emerald-400/25">
-                      {evt.priority}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (String(menuId) === String(evt.id)) {
-                          setMenuId(null);
-                        } else {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setMenuPos({
-                            top: rect.bottom + 4,
-                            right: Math.max(8, window.innerWidth - rect.right),
-                          });
-                          setMenuId(evt.id);
-                        }
-                      }}
-                      className="p-1 rounded-lg text-white/35 hover:text-white hover:bg-white/5 action-menu-trigger relative z-10 cursor-pointer"
-                    >
-                      <MoreHorizontal className="w-3.5 h-3.5" />
+            <ViewTransition viewKey={currentDate.toISOString()} className="space-y-2.5">
+              {dayEvents.length === 0 && (
+                <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-[12px] text-white/35 gap-3">
+                  <p>当日暂无日程</p>
+                </div>
+              )}
+              {dayEvents.map((evt) => (
+                <div key={evt.id} className="p-3 rounded-2xl bg-black/25 border border-white/[0.06] space-y-2 relative group">
+                  <div className="flex items-start justify-between gap-2">
+                    <button onClick={() => openEdit(evt)} className="text-left min-w-0">
+                      <div className="text-[12px] font-bold text-white leading-snug">{evt.title}</div>
+                      <div className="text-[10px] text-white/35 mt-0.5">{evt.status}</div>
                     </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-300 border border-emerald-400/25">
+                        {evt.priority}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (String(menuId) === String(evt.id)) {
+                            setMenuId(null);
+                          } else {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setMenuPos({
+                              top: rect.bottom + 4,
+                              right: Math.max(8, window.innerWidth - rect.right),
+                            });
+                            setMenuId(evt.id);
+                          }
+                        }}
+                        className="p-1 rounded-lg text-white/35 hover:text-white hover:bg-white/5 action-menu-trigger relative z-10 cursor-pointer"
+                      >
+                        <MoreHorizontal className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-white/45 space-y-1">
+                    <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-emerald-300" />{fmtHour(getEventStartHourDecimal(evt.startTime))} - {fmtHour(getEventEndHourDecimal(evt.endTime))}</div>
+                    <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-white/30" />{evt.room}</div>
+                    <div className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-white/30" />{evt.attendees.join('、')}</div>
                   </div>
                 </div>
-                <div className="text-[11px] text-white/45 space-y-1">
-                  <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-emerald-300" />{fmtHour(getEventStartHourDecimal(evt.startTime))} - {fmtHour(getEventEndHourDecimal(evt.endTime))}</div>
-                  <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-white/30" />{evt.room}</div>
-                  <div className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-white/30" />{evt.attendees.join('、')}</div>
-                </div>
-              </div>
-            ))}
+              ))}
             </ViewTransition>
           </div>
         </GlassCard>
@@ -407,7 +437,7 @@ export const ScheduleManagementPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] text-white/40 mb-1.5 block">日期 (5月)</label>
+              <label className="text-[11px] text-white/40 mb-1.5 block">日期 ({currentDate.getMonth() + 1}月)</label>
               <input type="number" min={1} max={31} className={field} value={form.day} onChange={(e) => setForm({ ...form, day: Number(e.target.value) })} />
             </div>
             <div>
@@ -474,21 +504,20 @@ function fmtHour(h: number) {
 }
 
 function MonthView({
-  year,
-  month,
-  selectedDay,
+  currentDate,
   events,
   onSelectDay,
   onDayDoubleCreate,
 }: {
-  year: number;
-  month: number;
-  selectedDay: number;
+  currentDate: Date;
   events: ScheduleEvent[];
   onSelectDay: (d: number) => void;
   onDayDoubleCreate: (d: number) => void;
 }) {
   const now = new Date();
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const selectedDay = currentDate.getDate();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfWeek = (new Date(year, month, 1).getDay() + 6) % 7;
   const cells = [...Array.from({ length: firstDayOfWeek }, () => null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
@@ -505,7 +534,10 @@ function MonthView({
           if (dayNum == null) return <div key={`e-${idx}`} className="rounded-xl bg-transparent" />;
           const isSelected = dayNum === selectedDay;
           const isToday = dayNum === now.getDate() && month === now.getMonth() && year === now.getFullYear();
-          const dayEvts = events.filter((e) => getEventDay(e.startTime) === dayNum);
+          const dayEvts = events.filter((e) => {
+            const ed = new Date(e.startTime);
+            return ed.getFullYear() === year && ed.getMonth() === month && ed.getDate() === dayNum;
+          });
           return (
             <button
               key={dayNum}
@@ -540,58 +572,69 @@ function MonthView({
 }
 
 function WeekView({
-  year,
-  month,
-  selectedDay,
+  currentDate,
   events,
-  onSelectDay,
+  onSelectDate,
   onSelectEvent,
 }: {
-  year: number;
-  month: number;
-  selectedDay: number;
+  currentDate: Date;
   events: ScheduleEvent[];
-  onSelectDay: (d: number) => void;
+  onSelectDate: (d: Date) => void;
   onSelectEvent: (e: ScheduleEvent) => void;
 }) {
   const weekDays = useMemo(() => {
-    const current = new Date(year, month, selectedDay);
-    const dayOfWeek = (current.getDay() + 6) % 7;
-    const monday = new Date(current);
-    monday.setDate(current.getDate() - dayOfWeek);
+    const dayOfWeek = (currentDate.getDay() + 6) % 7;
+    const monday = new Date(currentDate);
+    monday.setDate(currentDate.getDate() - dayOfWeek);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
-      return d.getDate();
+      return d;
     });
-  }, [year, month, selectedDay]);
+  }, [currentDate]);
 
   return (
     <div className="h-full min-h-[420px] overflow-auto">
       <div className="grid grid-cols-[52px_repeat(7,minmax(0,1fr))] gap-1 min-w-[640px]">
         <div />
-        {weekDays.map((d, i) => (
-          <button
-            key={`${d}-${i}`}
-            onClick={() => onSelectDay(d)}
-            className={`text-center py-2 rounded-xl text-[11px] font-semibold border ${
-              selectedDay === d
-                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30'
-                : 'text-white/45 border-transparent hover:bg-white/[0.03]'
-            }`}
-          >
-            <div>周{WEEKDAY_LABELS[i]}</div>
-            <div className="font-mono text-[13px] mt-0.5">{d}</div>
-          </button>
-        ))}
+        {weekDays.map((dateObj, i) => {
+          const isSelected =
+            dateObj.getFullYear() === currentDate.getFullYear() &&
+            dateObj.getMonth() === currentDate.getMonth() &&
+            dateObj.getDate() === currentDate.getDate();
+          return (
+            <button
+              key={dateObj.toISOString()}
+              onClick={() => onSelectDate(dateObj)}
+              className={`text-center py-2 rounded-xl text-[11px] font-semibold border ${
+                isSelected
+                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30'
+                  : 'text-white/45 border-transparent hover:bg-white/[0.03]'
+              }`}
+            >
+              <div>周{WEEKDAY_LABELS[i]}</div>
+              <div className="font-mono text-[13px] mt-0.5">
+                {dateObj.getMonth() !== currentDate.getMonth() ? `${dateObj.getMonth() + 1}/` : ''}{dateObj.getDate()}
+              </div>
+            </button>
+          );
+        })}
         {HOURS.map((hour) => (
           <React.Fragment key={hour}>
             <div className="text-[10px] font-mono text-white/30 py-2 pr-1 text-right">{fmtHour(hour)}</div>
-            {weekDays.map((d) => {
-              const cellEvents = events.filter((e) => getEventDay(e.startTime) === d && Math.floor(getEventStartHourDecimal(e.startTime)) === hour);
+            {weekDays.map((dateObj) => {
+              const cellEvents = events.filter((e) => {
+                const ed = new Date(e.startTime);
+                return (
+                  ed.getFullYear() === dateObj.getFullYear() &&
+                  ed.getMonth() === dateObj.getMonth() &&
+                  ed.getDate() === dateObj.getDate() &&
+                  Math.floor(getEventStartHourDecimal(e.startTime)) === hour
+                );
+              });
               return (
                 <div
-                  key={`${d}-${hour}`}
+                  key={`${dateObj.toISOString()}-${hour}`}
                   className="min-h-[44px] border border-white/[0.04] rounded-lg bg-black/15 p-0.5"
                 >
                   {cellEvents.map((e) => (
@@ -614,21 +657,19 @@ function WeekView({
 }
 
 function DayView({
-  day,
-  month,
+  currentDate,
   events,
   onSelectEvent,
   onEmptySlot,
 }: {
-  day: number;
-  month: number;
+  currentDate: Date;
   events: ScheduleEvent[];
   onSelectEvent: (e: ScheduleEvent) => void;
   onEmptySlot: (hour: number) => void;
 }) {
   return (
     <div className="h-full min-h-[420px] space-y-1 overflow-auto">
-      <div className="text-[12px] text-white/40 mb-2">{month + 1}月{day}日 · 时间轴（点击空白时段可预约）</div>
+      <div className="text-[12px] text-white/40 mb-2">{currentDate.getMonth() + 1}月{currentDate.getDate()}日 · 时间轴（点击空白时段可预约）</div>
       {HOURS.map((hour) => {
         const slotEvents = events.filter((e) => Math.floor(getEventStartHourDecimal(e.startTime)) === hour);
         return (

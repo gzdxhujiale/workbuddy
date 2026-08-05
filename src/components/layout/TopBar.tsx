@@ -94,7 +94,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         onClick: () => setIsCreateDocOpen(true),
       };
     }
-    if (titleKey === 'schedule') {
+    if (titleKey === 'schedule' || titleKey === 'time') {
       return {
         label: '预约日程',
         onClick: () => setIsCreateScheduleOpen(true),

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { turso } from './db';
 import { apiClient } from './api-client';
-import { TaskItem, KnowledgeBase } from '@/types';
+import { TaskItem, KnowledgeBase, TimeTask } from '@/types';
 
 // Helper to safely fetch JSON without throwing SyntaxError on HTML fallbacks in dev mode
 async function safeFetchJson<T = any>(fn: () => Promise<Response>): Promise<T | null> {
@@ -470,3 +470,158 @@ export function useDeleteScheduleEvent() {
     },
   });
 }
+
+// Helper to ensure time_tasks table exists in local Turso / SQLite
+async function ensureTimeTasksTable() {
+  try {
+    await turso.execute(`
+      CREATE TABLE IF NOT EXISTS time_tasks (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        priority TEXT NOT NULL DEFAULT '中',
+        status TEXT NOT NULL DEFAULT '进行中',
+        description TEXT DEFAULT '',
+        deadline INTEGER NOT NULL,
+        remind_at INTEGER,
+        completed_at INTEGER
+      );
+    `);
+  } catch (e) {
+    // Ignore if table exists
+  }
+}
+
+// Time Management Tasks
+export function useTimeTasks() {
+  return useQuery({
+    queryKey: ['time_tasks'],
+    queryFn: async () => {
+      const data = await safeFetchJson<TimeTask[]>(() => (apiClient.api as any)['time-tasks'].$get());
+      if (data) return data;
+
+      await ensureTimeTasksTable();
+      const { rows } = await turso.execute('SELECT * FROM time_tasks ORDER BY deadline ASC');
+      return rows.map((r: any) => ({
+        id: r.id as string,
+        title: r.title as string,
+        priority: r.priority as any,
+        status: r.status as any,
+        description: (r.description as string) || '',
+        deadline: Number(r.deadline),
+        remindAt: r.remind_at != null ? Number(r.remind_at) : null,
+        completedAt: r.completed_at != null ? Number(r.completed_at) : null,
+      })) as TimeTask[];
+    },
+  });
+}
+
+export function useAddTimeTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (task: Partial<TimeTask> & { title: string; deadline: number }) => {
+      const data = await safeFetchJson(() =>
+        (apiClient.api as any)['time-tasks'].$post({
+          json: {
+            title: task.title,
+            priority: task.priority || '中',
+            status: task.status || '进行中',
+            description: task.description || '',
+            deadline: task.deadline,
+            remindAt: task.remindAt ?? null,
+            completedAt: task.completedAt ?? null,
+          },
+        })
+      );
+      if (data) return;
+
+      await ensureTimeTasksTable();
+      const id = task.id || `TM-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      await turso.execute({
+        sql: `INSERT INTO time_tasks (id, title, priority, status, description, deadline, remind_at, completed_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          id,
+          task.title,
+          task.priority || '中',
+          task.status || '进行中',
+          task.description || '',
+          task.deadline,
+          task.remindAt ?? null,
+          task.completedAt ?? null,
+        ],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time_tasks'] });
+    },
+  });
+}
+
+export function useUpdateTimeTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<TimeTask> }) => {
+      const data = await safeFetchJson(() =>
+        (apiClient.api as any)['time-tasks'][':id'].$patch({
+          param: { id },
+          json: {
+            title: updates.title,
+            priority: updates.priority,
+            status: updates.status,
+            description: updates.description,
+            deadline: updates.deadline,
+            remindAt: updates.remindAt,
+            completedAt: updates.completedAt,
+          },
+        })
+      );
+      if (data) return;
+
+      await ensureTimeTasksTable();
+      const keys = Object.keys(updates);
+      if (keys.length === 0) return;
+
+      const setClause = keys
+        .map((k) => {
+          if (k === 'remindAt') return 'remind_at = ?';
+          if (k === 'completedAt') return 'completed_at = ?';
+          return `${k} = ?`;
+        })
+        .join(', ');
+
+      const values = keys.map((k) => (updates as any)[k] ?? null);
+
+      await turso.execute({
+        sql: `UPDATE time_tasks SET ${setClause} WHERE id = ?`,
+        args: [...values, id],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time_tasks'] });
+    },
+  });
+}
+
+export function useDeleteTimeTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await safeFetchJson(() =>
+        (apiClient.api as any)['time-tasks'][':id'].$delete({
+          param: { id },
+        })
+      );
+      if (data) return;
+
+      await ensureTimeTasksTable();
+      await turso.execute({
+        sql: 'DELETE FROM time_tasks WHERE id = ?',
+        args: [id],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time_tasks'] });
+    },
+  });
+}
+

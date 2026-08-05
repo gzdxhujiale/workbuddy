@@ -4,8 +4,9 @@ import dotenv from 'dotenv';
 // Load .env
 dotenv.config();
 
-const dbUrl = process.env.VITE_TURSO_DB_URL || 'file:local.db';
-const authToken = process.env.VITE_TURSO_DB_AUTH_TOKEN || '';
+const rawUrl = process.env.TURSO_DB_URL || process.env.VITE_TURSO_DB_URL || 'file:local.db';
+const dbUrl = rawUrl.replace(/^turso:\/\//, 'libsql://');
+const authToken = process.env.TURSO_DB_AUTH_TOKEN || process.env.VITE_TURSO_DB_AUTH_TOKEN || '';
 
 const client = createClient({
   url: dbUrl,
@@ -242,6 +243,63 @@ async function main() {
     await client.execute({
       sql: 'INSERT INTO schedule_events (id, title, start_time, end_time, room, priority, attendees, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       args: [e.id, e.title, e.startTime, e.endTime, e.room, e.priority, JSON.stringify(e.attendees), e.status]
+    });
+  }
+
+  // Create & Seed Time Tasks Table
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS time_tasks (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      priority TEXT NOT NULL DEFAULT '中',
+      status TEXT NOT NULL DEFAULT '进行中',
+      description TEXT DEFAULT '',
+      deadline INTEGER NOT NULL,
+      remind_at INTEGER,
+      completed_at INTEGER
+    );
+  `);
+  await client.execute('DELETE FROM time_tasks');
+
+  const nowTime = Date.now();
+  const initialTimeTasks = [
+    {
+      id: 'TM-2025-001',
+      title: '完成 Q3 架构演进方案设计',
+      priority: '高',
+      status: '进行中',
+      description: '梳理高并发微服务架构，整理模块解耦与数据持久化方案。',
+      deadline: nowTime + 3600000 * 4,
+      remindAt: nowTime + 3600000 * 2,
+      completedAt: null,
+    },
+    {
+      id: 'TM-2025-002',
+      title: '前端 Glassmorphism 样式走查',
+      priority: '中',
+      status: '已完成',
+      description: '确认毛玻璃无缝结合、动效防抖与暗黑模式可访问性对比度。',
+      deadline: nowTime - 3600000 * 5,
+      remindAt: nowTime - 3600000 * 6,
+      completedAt: nowTime - 3600000 * 2,
+    },
+    {
+      id: 'TM-2025-003',
+      title: '团队每周时间分配复盘',
+      priority: '低',
+      status: '进行中',
+      description: '汇总研发团队工时分布，产出下一 Sprint 资源排期表。',
+      deadline: nowTime + 86400000 * 2,
+      remindAt: nowTime + 86400000 * 2 - 3600000 * 2,
+      completedAt: null,
+    },
+  ];
+
+  for (const t of initialTimeTasks) {
+    await client.execute({
+      sql: `INSERT INTO time_tasks (id, title, priority, status, description, deadline, remind_at, completed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [t.id, t.title, t.priority, t.status, t.description, t.deadline, t.remindAt, t.completedAt],
     });
   }
 

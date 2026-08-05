@@ -3,6 +3,7 @@ export type NavTab =
   | 'overview' 
   | 'knowledge'
   | 'schedule' 
+  | 'time'
   | 'collaboration' 
   | 'analytics' 
   | 'settings';
@@ -74,3 +75,18 @@ export interface KnowledgeBase {
   updatedAt: number; // Unix timestamp
   deletedAt: number | null; // 软删除标记
 }
+
+export type TimeTaskPriority = '高' | '中' | '低';
+export type TimeTaskStatus = '进行中' | '已完成';
+
+export interface TimeTask {
+  id: string;
+  title: string;
+  priority: TimeTaskPriority;
+  status: TimeTaskStatus;
+  description: string;
+  deadline: number; // 截止时间 (毫秒时间戳)
+  remindAt: number | null; // 提醒时间 (毫秒时间戳)
+  completedAt: number | null; // 完成时间 (毫秒时间戳)
+}
+
