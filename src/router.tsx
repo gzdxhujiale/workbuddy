@@ -3,7 +3,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
 import { TaskManagementPage } from '@/pages/TaskManagementPage';
 import { ProjectOverviewPage } from '@/pages/ProjectOverviewPage';
-import { FileDocumentsPage } from '@/pages/FileDocumentsPage';
+import { KnowledgeBasePage } from '@/pages/KnowledgeBasePage';
 import { ScheduleManagementPage } from '@/pages/ScheduleManagementPage';
 import { TeamCollaborationPage } from '@/pages/TeamCollaborationPage';
 import { AIAnalyticsPage } from '@/pages/AIAnalyticsPage';
@@ -99,10 +99,10 @@ export const overviewRoute = createRoute({
   component: withLayout(ProjectOverviewPage, 'overview', '项目总览', '全景里程碑 · 研发健康度与进度跟进'),
 });
 
-export const filesRoute = createRoute({
+export const knowledgeRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/files',
-  component: withLayout(FileDocumentsPage, 'files', '知识库', '归档沉淀 · 多维搜索与历史版本可溯'),
+  path: '/knowledge',
+  component: withLayout(KnowledgeBasePage, 'knowledge', '知识库', '归档沉淀 · Tiptap 智能富文本与无缝协同'),
 });
 
 export const scheduleRoute = createRoute({
@@ -133,7 +133,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   tasksRoute,
   overviewRoute,
-  filesRoute,
+  knowledgeRoute,
   scheduleRoute,
   collaborationRoute,
   analyticsRoute,

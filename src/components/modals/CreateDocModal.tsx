@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, CheckCircle2 } from 'lucide-react';
 import { LiquidModal } from '@/components/ui/LiquidModal';
 import { LiquidSelect } from '@/components/ui/LiquidSelect';
-import { useAddFile } from '@/lib/queries';
+import { useAddKnowledgeBase } from '@/lib/queries';
 import { useToast } from '@/components/ui/Toast';
 import { motion } from 'framer-motion';
 
@@ -27,7 +27,7 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
     'AI 算法',
     '通用文档',
   ]);
-  const addFileMutation = useAddFile();
+  const addKBMutation = useAddKnowledgeBase();
   const { show, ToastEl } = useToast();
 
   const handleCreateCategory = (newCat: string) => {
@@ -46,12 +46,10 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
     e.preventDefault();
     if (!title.trim()) return;
 
-    addFileMutation.mutate({
+    addKBMutation.mutate({
       title: title.trim(),
-      category: category,
-      size: `${(Math.random() * 8 + 0.8).toFixed(1)} MB`,
-      author: 'Brandon',
-      tags: category ? ['新增', category] : ['新增'],
+      category: category ? category : null,
+      content: `<h2>${title.trim()}</h2><p>点击此处开始撰写知识文档内容...</p>`,
     });
 
     setTitle('');

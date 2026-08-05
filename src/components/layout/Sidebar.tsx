@@ -31,7 +31,7 @@ interface SidebarProps {
 const navItems: { id: NavTab; label: string; icon: React.ElementType; badge?: string }[] = [
   { id: 'tasks', label: '任务管理', icon: Target },
   { id: 'overview', label: '项目总览', icon: BarChart3 },
-  { id: 'files', label: '知识库', icon: BookOpen },
+  { id: 'knowledge', label: '知识库', icon: BookOpen },
   { id: 'schedule', label: '日程管理', icon: Calendar },
   { id: 'collaboration', label: '团队协作', icon: Users },
   { id: 'analytics', label: '智能分析', icon: Sparkles, badge: 'AI' },

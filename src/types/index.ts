@@ -1,7 +1,7 @@
 export type NavTab = 
   | 'tasks' 
   | 'overview' 
-  | 'files' 
+  | 'knowledge'
   | 'schedule' 
   | 'collaboration' 
   | 'analytics' 
@@ -65,13 +65,12 @@ export interface TimelineRow {
   highlighted?: boolean;
 }
 
-export interface FileDoc {
+export interface KnowledgeBase {
   id: string;
   title: string;
-  category: string;
-  size: string;
-  author: string;
-  updatedAt: number;
-  completion?: number;
-  tags: string[];
+  sortOrder: number;
+  category: string | null; // NULL 表示在“全部”
+  content: string;
+  updatedAt: number; // Unix timestamp
+  deletedAt: number | null; // 软删除标记
 }

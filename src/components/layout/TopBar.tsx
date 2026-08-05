@@ -88,7 +88,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     : [];
 
   const getActionConfig = () => {
-    if (titleKey === 'files' || titleKey === 'knowledge') {
+    if (titleKey === 'knowledge') {
       return {
         label: '创建文档',
         onClick: () => setIsCreateDocOpen(true),

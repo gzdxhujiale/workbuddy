@@ -580,3 +580,219 @@
 .text-soft {
   color: rgba(255, 255, 255, 0.68);
 }
+
+/* Tiptap Rich Text Editor Styling */
+.tiptap {
+  caret-color: #34d399 !important;
+  outline: none !important;
+  padding-left: 6px !important;
+}
+
+.tiptap p,
+.tiptap h1,
+.tiptap h2,
+.tiptap h3,
+.tiptap blockquote,
+.tiptap li {
+  caret-color: #34d399 !important;
+  min-height: 1.5em;
+  outline: none !important;
+}
+
+.tiptap p.is-empty::before,
+.tiptap p.is-editor-empty:first-child::before {
+  color: rgba(255, 255, 255, 0.28);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  padding-left: 2px;
+}
+
+.tiptap h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.tiptap h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.tiptap p {
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.65;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.tiptap ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.tiptap li {
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid rgba(52, 211, 153, 0.6);
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.tiptap pre {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #a7f3d0;
+  font-size: 0.8rem;
+  overflow-x: auto;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap code {
+  background: rgba(255, 255, 255, 0.08);
+  color: #6ee7b7;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Horizontal Rule Node */
+.tiptap hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin: 1.5rem 0;
+}
+
+/* Task List & Task Item Block Nodes */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+  user-select: none;
+}
+
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  transition: all 0.15s ease;
+}
+
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  background: #10b981;
+  border-color: #34d399;
+}
+
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked::before {
+  content: "✓";
+  color: #000;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.tiptap ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+}
+
+/* Table Node Styles */
+.tiptap table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1rem 0;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.tiptap td,
+.tiptap th {
+  min-width: 1em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.6rem 0.8rem;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  font-size: 0.85rem;
+}
+
+.tiptap th {
+  font-weight: bold;
+  text-align: left;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #a7f3d0;
+}
+
+.tiptap .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(52, 211, 153, 0.15);
+  pointer-events: none;
+}
+
+

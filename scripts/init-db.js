@@ -15,69 +15,12 @@ const client = createClient({
 async function main() {
   console.log(`[init-db] Connecting to Database at: ${dbUrl}`);
   
-  // 1. Create Workspaces Table
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS workspaces (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE
-    )
-  `);
-
-  // 2. Create Tasks Table
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS tasks (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      priority TEXT NOT NULL,
-      status TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      phase TEXT NOT NULL,
-      assignee_name TEXT NOT NULL,
-      assignee_avatar TEXT NOT NULL,
-      assignee_role TEXT NOT NULL,
-      project TEXT NOT NULL,
-      deadline INTEGER NOT NULL,
-      description TEXT NOT NULL,
-      tags TEXT NOT NULL,
-      ai_suggestions TEXT,
-      completion_progress INTEGER
-    )
-  `);
-
-  // 3. Create Files Table
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS files (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      category TEXT NOT NULL,
-      size TEXT NOT NULL,
-      author TEXT NOT NULL,
-      updated_at INTEGER NOT NULL,
-      completion INTEGER,
-      tags TEXT NOT NULL
-    )
-  `);
-
-  // 4. Create Schedule Events Table
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS schedule_events (
-      id INTEGER PRIMARY KEY,
-      title TEXT NOT NULL,
-      start_time INTEGER NOT NULL,
-      end_time INTEGER NOT NULL,
-      room TEXT NOT NULL,
-      priority TEXT NOT NULL,
-      attendees TEXT NOT NULL,
-      status TEXT NOT NULL
-    )
-  `);
-
-  console.log('[init-db] Tables created successfully.');
+  console.log('[init-db] Synchronizing seed data to existing tables...');
 
   // Clear existing data (for idempotency)
   await client.execute('DELETE FROM workspaces');
   await client.execute('DELETE FROM tasks');
-  await client.execute('DELETE FROM files');
+  await client.execute('DELETE FROM knowledge_bases');
   await client.execute('DELETE FROM schedule_events');
 
   // Insert Workspaces
@@ -196,17 +139,84 @@ async function main() {
     });
   }
 
-  // Insert Files
-  const initialFiles = [
-    { id: 'doc-1', title: 'WenXiBuddy 2.0 需求规格说明书 (PRD)', category: '产品文档', size: '4.8 MB', author: 'Brandon', updatedAt: new Date(new Date().getFullYear(), new Date().getMonth(), 24, 16, 30).getTime(), completion: 100, tags: ['PRD', '核心需求', '评审通过'] },
-    { id: 'doc-2', title: 'Glassmorphism Design System 3D 规范', category: '设计规范', size: '18.2 MB', author: 'Elena', updatedAt: new Date(new Date().getFullYear(), new Date().getMonth(), 23, 11, 20).getTime(), completion: 95, tags: ['Figma', 'UI Kit', '毛玻璃'] },
-    { id: 'doc-3', title: 'GraphQL & WebSocket 实时协议设计', category: '技术文档', size: '2.4 MB', author: 'David', updatedAt: new Date(new Date().getFullYear(), new Date().getMonth(), 22, 9, 15).getTime(), completion: 90, tags: ['API', 'WebSocket', '后端'] },
+  // Insert Knowledge Bases (JSON AST Storage Format)
+  const initialKnowledgeBases = [
+    {
+      id: 'kb-1',
+      title: 'WenXiBuddy 2.0 需求规格说明书 (PRD)',
+      sort_order: 10,
+      category: '产品文档',
+      content: JSON.stringify({
+        type: 'doc',
+        content: [
+          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: '1. 产品概述' }] },
+          { type: 'paragraph', content: [{ type: 'text', text: 'WenXiBuddy 2.0 是面向高效团队研发管理的 AI 驱动工作流与协同平台。' }] },
+          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: '2. 核心功能点' }] },
+          {
+            type: 'taskList',
+            content: [
+              { type: 'taskItem', attrs: { checked: true }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Tiptap JSON 结构化块级编辑器集成' }] }] },
+              { type: 'taskItem', attrs: { checked: true }, content: [{ type: 'paragraph', content: [{ type: 'text', text: '3D 任务看板与 CoverFlow 卡片' }] }] },
+              { type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: '实时数据流防抖写入与软删除' }] }] },
+            ]
+          }
+        ]
+      }),
+      updated_at: new Date(new Date().getFullYear(), new Date().getMonth(), 24, 16, 30).getTime(),
+      deleted_at: null
+    },
+    {
+      id: 'kb-2',
+      title: 'Glassmorphism Design System 3D 规范',
+      sort_order: 20,
+      category: '设计规范',
+      content: JSON.stringify({
+        type: 'doc',
+        content: [
+          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: '设计语言定义' }] },
+          { type: 'paragraph', content: [{ type: 'text', text: '采用深色现代基调（Modern Dark Theme）辅以多层毛玻璃与流体微动画。' }] },
+          { type: 'blockquote', content: [{ type: 'paragraph', content: [{ type: 'text', text: '视觉核心原则：无缝融合、极致透光、极简块级操控、流畅动效。' }] }] }
+        ]
+      }),
+      updated_at: new Date(new Date().getFullYear(), new Date().getMonth(), 23, 11, 20).getTime(),
+      deleted_at: null
+    },
+    {
+      id: 'kb-3',
+      title: 'GraphQL & WebSocket 实时协议设计',
+      sort_order: 30,
+      category: '技术文档',
+      content: JSON.stringify({
+        type: 'doc',
+        content: [
+          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: '实时推送与长连接规范' }] },
+          { type: 'paragraph', content: [{ type: 'text', text: '前后端建立 WebSocket 双向通道，结合 Turso LibSQL 异步事件驱动。' }] },
+          { type: 'codeBlock', content: [{ type: 'text', text: '// 状态推送通道定义\nconst channel = new BroadcastChannel("wxb_realtime");' }] }
+        ]
+      }),
+      updated_at: new Date(new Date().getFullYear(), new Date().getMonth(), 22, 9, 15).getTime(),
+      deleted_at: null
+    },
+    {
+      id: 'kb-4',
+      title: '未分类草案与协同想法',
+      sort_order: 40,
+      category: null,
+      content: JSON.stringify({
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: '此篇文档默认属于全部分类（category 为 null）。可以在此处记录未归档的团队灵感。' }] }
+        ]
+      }),
+      updated_at: new Date(new Date().getFullYear(), new Date().getMonth(), 25, 10, 0).getTime(),
+      deleted_at: null
+    }
   ];
 
-  for (const f of initialFiles) {
+  for (const kb of initialKnowledgeBases) {
     await client.execute({
-      sql: 'INSERT INTO files (id, title, category, size, author, updated_at, completion, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      args: [f.id, f.title, f.category, f.size, f.author, f.updatedAt, f.completion || 0, JSON.stringify(f.tags)]
+      sql: 'INSERT INTO knowledge_bases (id, title, sort_order, category, content, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [kb.id, kb.title, kb.sort_order, kb.category, kb.content, kb.updated_at, kb.deleted_at]
     });
   }
 
