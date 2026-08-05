@@ -314,18 +314,18 @@ export function useSoftDeleteKnowledgeBase() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const data = await safeFetchJson(() =>
-        apiClient.api.documents[':id'].$delete({
-          param: { id },
-        })
-      );
-      if (data) return;
-
       const now = Date.now();
       await turso.execute({
         sql: 'UPDATE knowledge_bases SET deleted_at = ? WHERE id = ?',
         args: [now, id],
       });
+
+      // Optionally notify backend API in background
+      safeFetchJson(() =>
+        apiClient.api.documents[':id'].$delete({
+          param: { id },
+        })
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge_bases'] });

@@ -47,6 +47,9 @@ dependencies:
   '@tiptap/extension-task-list':
     specifier: ^3.29.2
     version: 3.29.2(@tiptap/extension-list@3.29.2)
+  '@tiptap/markdown':
+    specifier: ^3.29.2
+    version: 3.29.2(@tiptap/core@3.29.2)(@tiptap/pm@3.29.2)
   '@tiptap/pm':
     specifier: ^3.29.2
     version: 3.29.2
@@ -74,6 +77,9 @@ dependencies:
   lucide-react:
     specifier: ^0.475.0
     version: 0.475.0(react@19.2.8)
+  marked:
+    specifier: ^18.0.9
+    version: 18.0.9
   react:
     specifier: ^19.0.0
     version: 19.2.8
@@ -1485,6 +1491,17 @@ packages:
       '@tiptap/pm': 3.29.2
     dev: false
 
+  /@tiptap/markdown@3.29.2(@tiptap/core@3.29.2)(@tiptap/pm@3.29.2):
+    resolution: {integrity: sha512-Knf9YqG3fxOyFuS3pe3eapDz0ya9eqPGzmyMSd5PuHNmR9/Ir6i5qk5+Md6bCPgDNjYskztNm7DoBXPfbXbO/w==}
+    peerDependencies:
+      '@tiptap/core': 3.29.2
+      '@tiptap/pm': 3.29.2
+    dependencies:
+      '@tiptap/core': 3.29.2(@tiptap/pm@3.29.2)
+      '@tiptap/pm': 3.29.2
+      marked: 17.0.6
+    dev: false
+
   /@tiptap/pm@3.29.2:
     resolution: {integrity: sha512-GCOme7xHaS+DSoaA4CDcAD3l6JyBlvZhvCyfsy2Vp6j8tEoBkZWio7soYVosmlyn7zq8/64VeFZP5s47yfG7fQ==}
     dependencies:
@@ -2062,6 +2079,18 @@ packages:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
     dev: true
+
+  /marked@17.0.6:
+    resolution: {integrity: sha512-gB0gkNafnonOw0obSTEGZTT86IuhILt2Wfx0mWH/1Au83kybTayroZ/V6nS25mN7u8ASy+5fMhgB3XPNrOZdmA==}
+    engines: {node: '>= 20'}
+    hasBin: true
+    dev: false
+
+  /marked@18.0.9:
+    resolution: {integrity: sha512-/Sa4qiiHZxf0/FQdBBowr9q4r10krCwMvpK48FUBdXdUXScDxiQGR9zCPrFgRVR5LU3iySOiIjy09ZQvADir1w==}
+    engines: {node: '>= 20'}
+    hasBin: true
+    dev: false
 
   /motion-dom@12.43.0:
     resolution: {integrity: sha512-azKON4d9S65PEoFUiQTMTgPheEmzf2QngdRc50AKfJp9Q9mmcBVw22c8eMq9k8kxOFHdL7+WZY7N/5F/lwiDag==}

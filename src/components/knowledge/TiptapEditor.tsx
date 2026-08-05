@@ -11,6 +11,7 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
 import { DragHandle } from '@tiptap/extension-drag-handle-react';
+import { Markdown } from '@tiptap/markdown';
 import {
   Bold,
   Italic,
@@ -102,6 +103,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
       TableRow,
       TableHeader,
       TableCell,
+      Markdown,
       Placeholder.configure({
         placeholder: "输入 '/' 快速插入块级节点...",
       }),

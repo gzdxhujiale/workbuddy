@@ -17,11 +17,19 @@ const updateKnowledgeBaseSchema = z.object({
   sortOrder: z.number().optional(),
 });
 
+const batchCategorySchema = z.object({
+  fromCategory: z.string(),
+  toCategory: z.string().nullable(),
+});
+
 export const documentsRouter = new Hono()
+  // GET /api/documents - List all non-deleted knowledge bases
   .get('/', async (c) => {
     try {
       if (!db) return c.json({ success: true, data: [] });
-      const { rows } = await db.execute('SELECT * FROM knowledge_bases WHERE deleted_at IS NULL ORDER BY sort_order ASC, updated_at DESC');
+      const { rows } = await db.execute(
+        'SELECT * FROM knowledge_bases WHERE deleted_at IS NULL ORDER BY sort_order ASC, updated_at DESC'
+      );
       const docs = rows.map((r: any) => ({
         id: r.id as string,
         title: r.title as string,
@@ -36,6 +44,8 @@ export const documentsRouter = new Hono()
       return c.json({ success: false, error: err.message }, 500);
     }
   })
+
+  // POST /api/documents - Create new document
   .post('/', zValidator('json', createKnowledgeBaseSchema), async (c) => {
     try {
       if (!db) return c.json({ success: false, error: 'Database not configured' }, 500);
@@ -46,7 +56,7 @@ export const documentsRouter = new Hono()
 
       await db.execute({
         sql: 'INSERT INTO knowledge_bases (id, title, sort_order, category, content, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, NULL)',
-        args: [id, data.title, data.sortOrder ?? 0, category, data.content || '', now]
+        args: [id, data.title, data.sortOrder ?? 0, category, data.content || '', now],
       });
 
       return c.json({ success: true, id }, 201);
@@ -54,6 +64,26 @@ export const documentsRouter = new Hono()
       return c.json({ success: false, error: err.message }, 500);
     }
   })
+
+  // POST /api/documents/batch-category - Batch update doc category
+  .post('/batch-category', zValidator('json', batchCategorySchema), async (c) => {
+    try {
+      if (!db) return c.json({ success: false, error: 'Database not configured' }, 500);
+      const { fromCategory, toCategory } = c.req.valid('json');
+      const now = Date.now();
+
+      await db.execute({
+        sql: 'UPDATE knowledge_bases SET category = ?, updated_at = ? WHERE category = ? AND deleted_at IS NULL',
+        args: [toCategory, now, fromCategory],
+      });
+
+      return c.json({ success: true });
+    } catch (err: any) {
+      return c.json({ success: false, error: err.message }, 500);
+    }
+  })
+
+  // PUT /api/documents/:id - Update single document
   .put('/:id', zValidator('json', updateKnowledgeBaseSchema), async (c) => {
     try {
       if (!db) return c.json({ success: false, error: 'Database not configured' }, 500);
@@ -86,6 +116,8 @@ export const documentsRouter = new Hono()
       return c.json({ success: false, error: err.message }, 500);
     }
   })
+
+  // DELETE /api/documents/:id - Soft Delete
   .delete('/:id', async (c) => {
     try {
       if (!db) return c.json({ success: false, error: 'Database not configured' }, 500);
@@ -96,6 +128,21 @@ export const documentsRouter = new Hono()
         args: [now, id],
       });
       return c.json({ success: true, deletedAt: now });
+    } catch (err: any) {
+      return c.json({ success: false, error: err.message }, 500);
+    }
+  })
+
+  // DELETE /api/documents/:id/hard - Hard Delete
+  .delete('/:id/hard', async (c) => {
+    try {
+      if (!db) return c.json({ success: false, error: 'Database not configured' }, 500);
+      const id = c.req.param('id');
+      await db.execute({
+        sql: 'DELETE FROM knowledge_bases WHERE id = ?',
+        args: [id],
+      });
+      return c.json({ success: true });
     } catch (err: any) {
       return c.json({ success: false, error: err.message }, 500);
     }
