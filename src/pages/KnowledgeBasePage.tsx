@@ -917,7 +917,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   right: menuPos.right,
                   zIndex: 9999,
                 }}
-                className="p-1.5 liquid-glass min-w-[145px] action-menu-content shadow-[0_20px_50px_rgba(0,0,0,0.65)]"
+                className="p-1.5 liquid-glass bg-[#0c101c]/95 min-w-[145px] action-menu-content shadow-[0_20px_50px_rgba(0,0,0,0.65)]"
               >
                 <button
                   onClick={() => {
@@ -1058,7 +1058,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   left: categoryMenu.x,
                   zIndex: 9999,
                 }}
-                className="w-44 p-1.5 liquid-glass category-menu-portal shadow-2xl space-y-0.5 border border-white/15"
+                className="w-44 p-1.5 liquid-glass bg-[#0c101c]/95 category-menu-portal shadow-2xl space-y-0.5 border border-white/15"
               >
                 <div className="px-2 py-1 text-[10px] font-mono text-emerald-300/80 border-b border-white/10 mb-1 line-clamp-1">
                   分类: {categoryMenu.catName}
@@ -1147,7 +1147,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   left: createDropdownPos.left,
                   zIndex: 9999,
                 }}
-                className="w-52 p-1.5 liquid-glass create-dropdown-portal shadow-2xl space-y-0.5 border border-white/15"
+                className="w-52 p-1.5 liquid-glass bg-[#0c101c]/95 create-dropdown-portal shadow-2xl space-y-0.5 border border-white/15"
               >
                 <div className="px-2 py-1 text-[10px] font-mono text-emerald-300/80 border-b border-white/10 mb-1">
                   当前分类: 【{selectedCategory}】

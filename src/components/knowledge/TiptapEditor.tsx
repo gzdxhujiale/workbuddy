@@ -519,7 +519,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
                   left: handleMenuPos.left,
                   zIndex: 9999,
                 }}
-                className="w-56 p-1.5 liquid-glass drag-handle-menu-portal shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-1 border border-emerald-400/30"
+                className="w-56 p-1.5 liquid-glass bg-[#0c101c]/95 drag-handle-menu-portal shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-1 border border-emerald-400/30"
               >
                 <div className="px-2 py-1 text-[10px] font-mono text-emerald-300/80 border-b border-white/10 mb-1 flex items-center justify-between">
                   <span>转换此块节点为...</span>
@@ -574,7 +574,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
                   left: blockMenuPos.left,
                   zIndex: 9999,
                 }}
-                className="w-52 p-1.5 liquid-glass shadow-[0_20px_50px_rgba(0,0,0,0.65)] space-y-0.5 border border-white/10"
+                className="w-52 p-1.5 liquid-glass bg-[#0c101c]/95 shadow-[0_20px_50px_rgba(0,0,0,0.65)] space-y-0.5 border border-white/10"
               >
                 {blockMenuItems.map((item) => (
                   <button
@@ -612,7 +612,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
                   left: slashPos.left,
                   zIndex: 9999,
                 }}
-                className="w-56 p-1.5 liquid-glass slash-menu-portal shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-0.5 border border-emerald-400/30"
+                className="w-56 p-1.5 liquid-glass bg-[#0c101c]/95 slash-menu-portal shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-0.5 border border-emerald-400/30"
               >
                 <div className="px-2 py-1 text-[10px] font-mono text-emerald-300/80 border-b border-white/10 mb-1">
                   快捷插入块级节点 (Slash Command)
