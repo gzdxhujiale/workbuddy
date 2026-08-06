@@ -619,7 +619,7 @@ async function ensureTimeTasksTable() {
         priority TEXT NOT NULL DEFAULT '中',
         status TEXT NOT NULL DEFAULT '进行中',
         description TEXT DEFAULT '',
-        deadline INTEGER NOT NULL,
+        deadline INTEGER,
         remind_at INTEGER,
         completed_at INTEGER
       );
@@ -645,7 +645,7 @@ export function useTimeTasks() {
         priority: r.priority as any,
         status: r.status as any,
         description: (r.description as string) || '',
-        deadline: Number(r.deadline),
+        deadline: r.deadline != null ? Number(r.deadline) : null,
         remindAt: r.remind_at != null ? Number(r.remind_at) : null,
         completedAt: r.completed_at != null ? Number(r.completed_at) : null,
       })) as TimeTask[];
@@ -656,7 +656,7 @@ export function useTimeTasks() {
 export function useAddTimeTask() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (task: Partial<TimeTask> & { title: string; deadline: number }) => {
+    mutationFn: async (task: Partial<TimeTask> & { title: string; deadline?: number | null }) => {
       const data = await safeFetchJson(() =>
         (apiClient.api as any)['time-tasks'].$post({
           json: {
@@ -664,7 +664,7 @@ export function useAddTimeTask() {
             priority: task.priority || '中',
             status: task.status || '进行中',
             description: task.description || '',
-            deadline: task.deadline,
+            deadline: task.deadline ?? null,
             remindAt: task.remindAt ?? null,
             completedAt: task.completedAt ?? null,
           },
@@ -683,7 +683,7 @@ export function useAddTimeTask() {
           task.priority || '中',
           task.status || '进行中',
           task.description || '',
-          task.deadline,
+          task.deadline ?? null,
           task.remindAt ?? null,
           task.completedAt ?? null,
         ],
@@ -734,7 +734,24 @@ export function useUpdateTimeTask() {
         args: [...values, id],
       });
     },
-    onSuccess: () => {
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ['time_tasks'] });
+      const previousTasks = queryClient.getQueryData<TimeTask[]>(['time_tasks']);
+
+      if (previousTasks) {
+        queryClient.setQueryData<TimeTask[]>(['time_tasks'], (old) =>
+          old ? old.map((t) => (t.id === id ? { ...t, ...updates } : t)) : []
+        );
+      }
+
+      return { previousTasks };
+    },
+    onError: (_err, _newVal, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(['time_tasks'], context.previousTasks);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['time_tasks'] });
     },
   });

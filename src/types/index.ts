@@ -93,7 +93,7 @@ export interface TimeTask {
   priority: TimeTaskPriority;
   status: TimeTaskStatus;
   description: string;
-  deadline: number; // 截止时间 (毫秒时间戳)
+  deadline: number | null; // 截止时间 (毫秒时间戳，可为空)
   remindAt: number | null; // 提醒时间 (毫秒时间戳)
   completedAt: number | null; // 完成时间 (毫秒时间戳)
 }

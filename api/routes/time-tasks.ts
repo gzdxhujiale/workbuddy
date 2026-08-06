@@ -13,7 +13,7 @@ async function initTimeTasksTable() {
         priority TEXT NOT NULL DEFAULT '中',
         status TEXT NOT NULL DEFAULT '进行中',
         description TEXT DEFAULT '',
-        deadline INTEGER NOT NULL,
+        deadline INTEGER,
         remind_at INTEGER,
         completed_at INTEGER
       );
@@ -29,7 +29,7 @@ const createTimeTaskSchema = z.object({
   priority: z.enum(['高', '中', '低']).default('中'),
   status: z.enum(['进行中', '已完成']).default('进行中'),
   description: z.string().default(''),
-  deadline: z.number(),
+  deadline: z.number().nullable().optional(),
   remindAt: z.number().nullable().optional(),
   completedAt: z.number().nullable().optional(),
 });
@@ -39,7 +39,7 @@ const updateTimeTaskSchema = z.object({
   priority: z.enum(['高', '中', '低']).optional(),
   status: z.enum(['进行中', '已完成']).optional(),
   description: z.string().optional(),
-  deadline: z.number().optional(),
+  deadline: z.number().nullable().optional(),
   remindAt: z.number().nullable().optional(),
   completedAt: z.number().nullable().optional(),
 });
@@ -56,7 +56,7 @@ export const timeTasksRouter = new Hono()
         priority: r.priority as any,
         status: r.status as any,
         description: (r.description as string) || '',
-        deadline: Number(r.deadline),
+        deadline: r.deadline != null ? Number(r.deadline) : null,
         remindAt: r.remind_at != null ? Number(r.remind_at) : null,
         completedAt: r.completed_at != null ? Number(r.completed_at) : null,
       }));
@@ -81,7 +81,7 @@ export const timeTasksRouter = new Hono()
           data.priority,
           data.status,
           data.description || '',
-          data.deadline,
+          data.deadline ?? null,
           data.remindAt ?? null,
           data.completedAt ?? null,
         ],
