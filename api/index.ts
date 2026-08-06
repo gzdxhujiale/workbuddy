@@ -9,6 +9,8 @@ import { workspacesRouter } from './routes/workspaces.js';
 import { schedulesRouter } from './routes/schedules.js';
 import { timeTasksRouter } from './routes/time-tasks.js';
 
+import { categoriesRouter } from './routes/categories.js';
+
 export const config = {
   runtime: 'edge',
 };
@@ -33,6 +35,7 @@ const routes = app
   .route('/health', healthRouter)
   .route('/tasks', tasksRouter)
   .route('/documents', documentsRouter)
+  .route('/categories', categoriesRouter)
   .route('/workspaces', workspacesRouter)
   .route('/schedules', schedulesRouter)
   .route('/time-tasks', timeTasksRouter);

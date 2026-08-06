@@ -6,8 +6,6 @@ import {
   Pencil,
   Trash2,
   MoreHorizontal,
-  MoreVertical,
-  Edit3,
   Plus,
   ChevronDown,
   Upload,
@@ -17,6 +15,7 @@ import {
   ArrowLeft,
   FolderEdit,
   Clock,
+  Edit3,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { LiquidModal } from '@/components/ui/LiquidModal';
@@ -26,10 +25,15 @@ import {
   useAddKnowledgeBase,
   useUpdateKnowledgeBase,
   useSoftDeleteKnowledgeBase,
+  useKnowledgeCategories,
+  useAddKnowledgeCategory,
+  useUpdateKnowledgeCategory,
+  useDeleteKnowledgeCategory,
+  useReorderKnowledgeCategories,
 } from '@/lib/queries';
 import { useToast } from '@/components/ui/Toast';
-import { KnowledgeBase } from '@/types';
-import { AnimatePresence, motion } from 'framer-motion';
+import { KnowledgeBase, KnowledgeCategory } from '@/types';
+import { AnimatePresence, motion, Reorder } from 'framer-motion';
 import { formatDateFull } from '@/utils/date';
 import { TiptapEditor } from '@/components/knowledge/TiptapEditor';
 import { useUIStore } from '@/store/useUIStore';
@@ -247,16 +251,42 @@ export const KnowledgeBasePage: React.FC = () => {
   const setIsCreateDocOpen = useUIStore((s) => s.setIsCreateDocOpen);
 
   const { data: rawKnowledgeBases = [], isLoading } = useKnowledgeBases();
+  const { data: dbCategories = [] } = useKnowledgeCategories();
+
   const addKBMutation = useAddKnowledgeBase();
   const updateKBMutation = useUpdateKnowledgeBase();
   const softDeleteKBMutation = useSoftDeleteKnowledgeBase();
 
+  const addCategoryMutation = useAddKnowledgeCategory();
+  const updateCategoryMutation = useUpdateKnowledgeCategory();
+  const deleteCategoryMutation = useDeleteKnowledgeCategory();
+  const reorderCategoriesMutation = useReorderKnowledgeCategories();
+
   const { show, ToastEl } = useToast();
 
-  // Optimistic local state cache
+  // Local ordered categories state for drag reordering
+  const [orderedCategories, setOrderedCategories] = useState<KnowledgeCategory[]>([]);
+
+  useEffect(() => {
+    if (dbCategories.length > 0) {
+      setOrderedCategories(dbCategories);
+    }
+  }, [dbCategories]);
+
+  const handleReorderCategories = (newOrder: KnowledgeCategory[]) => {
+    setOrderedCategories(newOrder);
+
+    const itemsToUpdate = newOrder.map((cat, idx) => ({
+      id: cat.id,
+      sortOrder: (idx + 1) * 10,
+    }));
+
+    reorderCategoriesMutation.mutate(itemsToUpdate);
+  };
+
+  // Optimistic local state cache for docs
   const [localDocs, setLocalDocs] = useState<KnowledgeBase[]>([]);
 
-  // Sync server docs with local docs if server refetched
   useEffect(() => {
     if (rawKnowledgeBases.length > 0) {
       setLocalDocs(rawKnowledgeBases);
@@ -267,12 +297,13 @@ export const KnowledgeBasePage: React.FC = () => {
     return localDocs.length > 0 ? localDocs : rawKnowledgeBases;
   }, [localDocs, rawKnowledgeBases]);
 
-  const [selectedCategory, setSelectedCategory] = useState('全部');
+  // Selected Category ID ('ALL' for all categories)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Category context menu and renaming state
-  const [categoryMenu, setCategoryMenu] = useState<{ catName: string; x: number; y: number } | null>(null);
-  const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
+  const [categoryMenu, setCategoryMenu] = useState<{ catId: string; catName: string; x: number; y: number } | null>(null);
+  const [renamingCategory, setRenamingCategory] = useState<{ catId: string; catName: string } | null>(null);
   const [renameInputVal, setRenameInputVal] = useState('');
 
   // Batch Import / Export State
@@ -290,26 +321,23 @@ export const KnowledgeBasePage: React.FC = () => {
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
-  const [createCategory, setCreateCategory] = useState<string | null>(null);
+  const [createCategoryId, setCreateCategoryId] = useState<string | null>(null);
 
   // Category modification modal from dropdown menu
   const [changeCategoryDoc, setChangeCategoryDoc] = useState<KnowledgeBase | null>(null);
-  const [targetCategory, setTargetCategory] = useState<string>('');
+  const [targetCategoryId, setTargetCategoryId] = useState<string>('');
 
   // Dropdown menu state
   const [menuId, setMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const activeMenuDoc = useMemo(() => allDocs.find((d) => d.id === menuId), [allDocs, menuId]);
 
-  // Categories collection
-  const [categories, setCategories] = useState<string[]>([
-    '全部',
-    '产品文档',
-    '设计规范',
-    '技术文档',
-    '测试文档',
-    '通用文档',
-  ]);
+  // Category Map for fast lookup ID -> Name
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, string>();
+    dbCategories.forEach((c) => map.set(c.id, c.name));
+    return map;
+  }, [dbCategories]);
 
   useEffect(() => {
     if (isCreateDocOpen) {
@@ -353,81 +381,60 @@ export const KnowledgeBasePage: React.FC = () => {
 
   const handleOpenCreateModal = () => {
     setCreateTitle('');
-    if (selectedCategory === '全部') {
-      setCreateCategory(null);
+    if (selectedCategoryId === 'ALL') {
+      setCreateCategoryId(null);
     } else {
-      setCreateCategory(selectedCategory);
+      setCreateCategoryId(selectedCategoryId);
     }
     setShowCreateModal(true);
   };
 
-  const handleCreateCategory = (newCat: string) => {
-    if (!categories.includes(newCat)) {
-      setCategories((prev) => [...prev, newCat]);
-      show(`已新建知识分类：${newCat}`);
-    }
+  const handleCreateCategory = (newCatName: string) => {
+    addCategoryMutation.mutate(
+      { name: newCatName },
+      {
+        onSuccess: (newId) => {
+          show(`已新建知识分类：${newCatName}`);
+          setCreateCategoryId(newId);
+        },
+      }
+    );
   };
 
-  // Delete category and reset all its docs' category to null (Move to "全部")
-  const handleDeleteCategory = (catName: string) => {
-    if (catName === '全部') return;
-
-    const docsInCat = allDocs.filter((d) => d.category === catName);
-
-    // Optimistically set category to null for all documents in this category
+  // Delete category
+  const handleDeleteCategory = (catId: string, catName: string) => {
     setLocalDocs((prev) =>
-      prev.map((d) => (d.category === catName ? { ...d, category: null } : d))
+      prev.map((d) => (d.categoryId === catId ? { ...d, categoryId: null } : d))
     );
 
-    docsInCat.forEach((d) => {
-      updateKBMutation.mutate({
-        id: d.id,
-        title: d.title,
-        category: null,
-        content: d.content,
-      });
+    deleteCategoryMutation.mutate(catId, {
+      onSuccess: () => {
+        if (selectedCategoryId === catId) {
+          setSelectedCategoryId('ALL');
+        }
+        setCategoryMenu(null);
+        show(`已删除分类《${catName}》，重置关联文档为【全部/未分类】`);
+      },
     });
-
-    setCategories((prev) => prev.filter((c) => c !== catName));
-
-    if (selectedCategory === catName) {
-      setSelectedCategory('全部');
-    }
-
-    setCategoryMenu(null);
-    show(`已删除分类《${catName}》，属下 ${docsInCat.length} 篇文档已重置归属于【全部】`);
   };
 
-  // Rename category and update all docs under this category
-  const handleRenameCategorySubmit = (oldName: string, newName: string) => {
+  // Rename category
+  const handleRenameCategorySubmit = (catId: string, oldName: string, newName: string) => {
     const trimmed = newName.trim();
     if (!trimmed || trimmed === oldName) {
       setRenamingCategory(null);
       return;
     }
 
-    setLocalDocs((prev) =>
-      prev.map((d) => (d.category === oldName ? { ...d, category: trimmed } : d))
+    updateCategoryMutation.mutate(
+      { id: catId, name: trimmed },
+      {
+        onSuccess: () => {
+          setRenamingCategory(null);
+          show(`分类《${oldName}》已重命名为《${trimmed}》`);
+        },
+      }
     );
-
-    const docsInCat = allDocs.filter((d) => d.category === oldName);
-    docsInCat.forEach((d) => {
-      updateKBMutation.mutate({
-        id: d.id,
-        title: d.title,
-        category: trimmed,
-        content: d.content,
-      });
-    });
-
-    setCategories((prev) => prev.map((c) => (c === oldName ? trimmed : c)));
-
-    if (selectedCategory === oldName) {
-      setSelectedCategory(trimmed);
-    }
-
-    setRenamingCategory(null);
-    show(`分类《${oldName}》已重命名为《${trimmed}》`);
   };
 
   // Batch Import Markdown Files Handler
@@ -435,7 +442,7 @@ export const KnowledgeBasePage: React.FC = () => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const targetCat = selectedCategory === '全部' ? null : selectedCategory;
+    const targetCatId = selectedCategoryId === 'ALL' ? null : selectedCategoryId;
     let importedCount = 0;
 
     for (const file of files) {
@@ -446,14 +453,15 @@ export const KnowledgeBasePage: React.FC = () => {
 
         addKBMutation.mutate({
           title: docTitle,
-          category: targetCat,
+          categoryId: targetCatId,
           content: jsonString,
         });
         importedCount++;
       } catch (err) {}
     }
 
-    show(`成功批量导入 ${importedCount} 个 Markdown 文档至分类【${selectedCategory}】`);
+    const catName = selectedCategoryId === 'ALL' ? '全部' : (categoryMap.get(selectedCategoryId) || '未分类');
+    show(`成功批量导入 ${importedCount} 个 Markdown 文档至分类【${catName}】`);
     setShowCreateDropdown(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -491,26 +499,24 @@ export const KnowledgeBasePage: React.FC = () => {
   };
 
   const categoryOptions = useMemo(() => {
-    const opts = categories
-      .filter((c) => c !== '全部')
-      .map((c) => ({ value: c, label: c }));
+    const opts = dbCategories.map((c) => ({ value: c.id, label: c.name }));
     return [{ value: '', label: '全部 / 未分类 (null)' }, ...opts];
-  }, [categories]);
+  }, [dbCategories]);
 
   // Filter docs by category and search
   const filteredDocs = useMemo(() => {
     return allDocs.filter((d) => {
       if (d.deletedAt) return false;
       const matchCategory =
-        selectedCategory === '全部'
+        selectedCategoryId === 'ALL'
           ? true
-          : (d.category || '未分类') === selectedCategory;
+          : d.categoryId === selectedCategoryId;
       const matchSearch =
         d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (d.content && d.content.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchCategory && matchSearch;
     });
-  }, [allDocs, selectedCategory, searchQuery]);
+  }, [allDocs, selectedCategoryId, searchQuery]);
 
   // Active document being edited in editor view
   const editingDoc = useMemo(
@@ -524,13 +530,13 @@ export const KnowledgeBasePage: React.FC = () => {
   const saveTimerRef = useRef<any>(null);
 
   const performAutoSave = useCallback(
-    (id: string, newTitle: string, newCategory: string | null, newContent: string) => {
+    (id: string, newTitle: string, newCategoryId: string | null, newContent: string) => {
       setIsSaving(true);
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
       saveTimerRef.current = setTimeout(() => {
         updateKBMutation.mutate(
-          { id, title: newTitle, category: newCategory, content: newContent },
+          { id, title: newTitle, categoryId: newCategoryId, content: newContent },
           {
             onSuccess: () => {
               setIsSaving(false);
@@ -553,16 +559,16 @@ export const KnowledgeBasePage: React.FC = () => {
     setLocalDocs((prev) =>
       prev.map((d) => (d.id === editingDoc.id ? { ...d, title: newTitle, updatedAt: Date.now() } : d))
     );
-    performAutoSave(editingDoc.id, newTitle, editingDoc.category, editingDoc.content);
+    performAutoSave(editingDoc.id, newTitle, editingDoc.categoryId, editingDoc.content);
   };
 
   // Handle Optimistic Category Change
-  const handleCategoryChange = (newCat: string | null) => {
+  const handleCategoryChange = (newCatId: string | null) => {
     if (!editingDoc) return;
     setLocalDocs((prev) =>
-      prev.map((d) => (d.id === editingDoc.id ? { ...d, category: newCat, updatedAt: Date.now() } : d))
+      prev.map((d) => (d.id === editingDoc.id ? { ...d, categoryId: newCatId, updatedAt: Date.now() } : d))
     );
-    performAutoSave(editingDoc.id, editingDoc.title, newCat, editingDoc.content);
+    performAutoSave(editingDoc.id, editingDoc.title, newCatId, editingDoc.content);
   };
 
   // Handle Optimistic Tiptap Content Change
@@ -571,7 +577,7 @@ export const KnowledgeBasePage: React.FC = () => {
     setLocalDocs((prev) =>
       prev.map((d) => (d.id === editingDoc.id ? { ...d, content: newContent, updatedAt: Date.now() } : d))
     );
-    performAutoSave(editingDoc.id, editingDoc.title, editingDoc.category, newContent);
+    performAutoSave(editingDoc.id, editingDoc.title, editingDoc.categoryId, newContent);
   };
 
   // Submit Create Knowledge Base
@@ -579,7 +585,7 @@ export const KnowledgeBasePage: React.FC = () => {
     e.preventDefault();
     if (!createTitle.trim()) return;
 
-    const newCategoryVal = createCategory && createCategory.trim() ? createCategory.trim() : null;
+    const newCatIdVal = createCategoryId && createCategoryId.trim() ? createCategoryId.trim() : null;
 
     const initialDocJson = JSON.stringify({
       type: 'doc',
@@ -599,7 +605,7 @@ export const KnowledgeBasePage: React.FC = () => {
     addKBMutation.mutate(
       {
         title: createTitle.trim(),
-        category: newCategoryVal,
+        categoryId: newCatIdVal,
         content: initialDocJson,
       },
       {
@@ -635,15 +641,15 @@ export const KnowledgeBasePage: React.FC = () => {
     e.preventDefault();
     if (!changeCategoryDoc) return;
 
-    const catVal = targetCategory && targetCategory.trim() ? targetCategory.trim() : null;
+    const catIdVal = targetCategoryId && targetCategoryId.trim() ? targetCategoryId.trim() : null;
     setLocalDocs((prev) =>
-      prev.map((d) => (d.id === changeCategoryDoc.id ? { ...d, category: catVal, updatedAt: Date.now() } : d))
+      prev.map((d) => (d.id === changeCategoryDoc.id ? { ...d, categoryId: catIdVal, updatedAt: Date.now() } : d))
     );
 
     updateKBMutation.mutate(
       {
         id: changeCategoryDoc.id,
-        category: catVal,
+        categoryId: catIdVal,
       },
       {
         onSuccess: () => {
@@ -690,7 +696,7 @@ export const KnowledgeBasePage: React.FC = () => {
             <div className="flex items-center gap-2 shrink-0">
               <div className="w-44">
                 <LiquidSelect
-                  value={editingDoc.category || ''}
+                  value={editingDoc.categoryId || ''}
                   onChange={(val) => handleCategoryChange(val ? val : null)}
                   options={categoryOptions}
                   allowCreate={true}
@@ -723,45 +729,56 @@ export const KnowledgeBasePage: React.FC = () => {
         <>
           {/* Header Controls */}
           <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap shrink-0">
+            {/* Category Pills Bar - ONLY Right-Click Context Menu (No three-dots icon) */}
             <div className="liquid-pill p-1 flex items-center gap-1 shrink-0 whitespace-nowrap overflow-x-auto max-w-full">
-              {categories.map((cat) => (
-                <div key={cat} className="relative flex items-center group">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory(cat)}
-                    onContextMenu={(e) => {
-                      if (cat === '全部') return;
-                      e.preventDefault();
-                      setCategoryMenu({
-                        catName: cat,
-                        x: e.clientX,
-                        y: e.clientY,
-                      });
-                    }}
-                    className={`px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${
-                      selectedCategory === cat
-                        ? 'bg-white/15 text-emerald-300 shadow-sm border border-emerald-400/20'
-                        : 'text-white/45 hover:text-white/80'
-                    }`}
+              <button
+                type="button"
+                onClick={() => setSelectedCategoryId('ALL')}
+                className={`px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0 ${
+                  selectedCategoryId === 'ALL'
+                    ? 'bg-white/15 text-emerald-300 shadow-sm border border-emerald-400/20'
+                    : 'text-white/45 hover:text-white/80'
+                }`}
+              >
+                全部
+              </button>
+
+              <Reorder.Group
+                axis="x"
+                values={orderedCategories}
+                onReorder={handleReorderCategories}
+                className="flex items-center gap-1 overflow-visible"
+              >
+                {orderedCategories.map((cat) => (
+                  <Reorder.Item
+                    key={cat.id}
+                    value={cat}
+                    className="shrink-0 relative touch-none select-none cursor-grab active:cursor-grabbing"
+                    whileDrag={{ scale: 1.05, zIndex: 50 }}
                   >
-                    <span>{cat}</span>
-                    {cat !== '全部' && (
-                      <MoreVertical
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setCategoryMenu({
-                            catName: cat,
-                            x: rect.left,
-                            y: rect.bottom + 4,
-                          });
-                        }}
-                        className="w-3 h-3 opacity-0 group-hover:opacity-100 hover:text-emerald-300 transition-all cursor-pointer"
-                      />
-                    )}
-                  </button>
-                </div>
-              ))}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategoryId(cat.id)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setCategoryMenu({
+                          catId: cat.id,
+                          catName: cat.name,
+                          x: e.clientX,
+                          y: e.clientY,
+                        });
+                      }}
+                      className={`px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${
+                        selectedCategoryId === cat.id
+                          ? 'bg-white/15 text-emerald-300 shadow-sm border border-emerald-400/20'
+                          : 'text-white/45 hover:text-white/80'
+                      }`}
+                    >
+                      <span>{cat.name}</span>
+                    </button>
+                  </Reorder.Item>
+                ))}
+              </Reorder.Group>
             </div>
 
             <div className="flex items-center gap-2 shrink-0 ml-auto">
@@ -785,7 +802,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 onChange={handleBatchImportFiles}
               />
 
-              {/* Split Dropdown Create Button (Matches TopBar Capsule Style) */}
+              {/* Split Dropdown Create Button */}
               <div className="relative flex items-center shrink-0">
                 <div className="liquid-btn-primary h-9 pl-4 pr-1 rounded-full text-[12px] font-bold flex items-center gap-1 shadow-lg cursor-pointer">
                   <button
@@ -848,7 +865,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
                         <div className="flex items-center gap-1">
                           <span className="text-[10px] font-mono text-emerald-300/80 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-400/20">
-                            {doc.category || '全部 / 未分类'}
+                            {doc.categoryId ? (categoryMap.get(doc.categoryId) || '未知分类') : '全部 / 未分类'}
                           </span>
 
                           <button
@@ -932,7 +949,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 <button
                   onClick={() => {
                     setChangeCategoryDoc(activeMenuDoc);
-                    setTargetCategory(activeMenuDoc.category || '');
+                    setTargetCategoryId(activeMenuDoc.categoryId || '');
                     setMenuId(null);
                   }}
                   className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] text-cyan-300 hover:bg-white/5 transition-colors"
@@ -958,9 +975,9 @@ export const KnowledgeBasePage: React.FC = () => {
         onClose={() => setShowCreateModal(false)}
         title="新建知识库文档"
         subtitle={
-          selectedCategory !== '全部'
-            ? `默认将归档至分类：${selectedCategory}`
-            : '默认放置于【全部】分类下 (NULL)'
+          selectedCategoryId !== 'ALL'
+            ? `默认将归档至分类：${categoryMap.get(selectedCategoryId) || '未知分类'}`
+            : '默认放置于【全部/未分类】下'
         }
         icon={<BookOpen className="w-5 h-5" />}
         footer={
@@ -993,8 +1010,8 @@ export const KnowledgeBasePage: React.FC = () => {
           <div>
             <label className="text-[11px] text-white/40 mb-1 block">归属分类 (可选):</label>
             <LiquidSelect
-              value={createCategory || ''}
-              onChange={(val) => setCreateCategory(val ? val : null)}
+              value={createCategoryId || ''}
+              onChange={(val) => setCreateCategoryId(val ? val : null)}
               options={categoryOptions}
               allowCreate={true}
               onCreateOption={handleCreateCategory}
@@ -1032,8 +1049,8 @@ export const KnowledgeBasePage: React.FC = () => {
           <div>
             <label className="text-[11px] text-white/40 mb-1.5 block">请选择新的分类：</label>
             <LiquidSelect
-              value={targetCategory}
-              onChange={setTargetCategory}
+              value={targetCategoryId}
+              onChange={setTargetCategoryId}
               options={categoryOptions}
               allowCreate={true}
               onCreateOption={handleCreateCategory}
@@ -1067,7 +1084,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setRenamingCategory(categoryMenu.catName);
+                    setRenamingCategory({ catId: categoryMenu.catId, catName: categoryMenu.catName });
                     setRenameInputVal(categoryMenu.catName);
                     setCategoryMenu(null);
                   }}
@@ -1078,7 +1095,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => handleDeleteCategory(categoryMenu.catName)}
+                  onClick={() => handleDeleteCategory(categoryMenu.catId, categoryMenu.catName)}
                   className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] text-rose-300 hover:bg-rose-500/20 flex items-center gap-2 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> 删除此分类
@@ -1094,7 +1111,7 @@ export const KnowledgeBasePage: React.FC = () => {
         open={!!renamingCategory}
         onClose={() => setRenamingCategory(null)}
         title="重命名知识分类"
-        subtitle={`原分类名称: ${renamingCategory}`}
+        subtitle={`原分类名称: ${renamingCategory?.catName}`}
         icon={<Edit3 className="w-5 h-5 text-cyan-300" />}
         footer={
           <div className="flex justify-end gap-2">
@@ -1106,7 +1123,7 @@ export const KnowledgeBasePage: React.FC = () => {
             </button>
             <button
               onClick={() =>
-                renamingCategory && handleRenameCategorySubmit(renamingCategory, renameInputVal)
+                renamingCategory && handleRenameCategorySubmit(renamingCategory.catId, renamingCategory.catName, renameInputVal)
               }
               className="h-10 px-4 rounded-full liquid-btn-primary text-[12px] font-bold"
             >
@@ -1124,7 +1141,7 @@ export const KnowledgeBasePage: React.FC = () => {
             className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-[13px] outline-none focus:border-emerald-400"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && renamingCategory) {
-                handleRenameCategorySubmit(renamingCategory, renameInputVal);
+                handleRenameCategorySubmit(renamingCategory.catId, renamingCategory.catName, renameInputVal);
               }
             }}
           />
@@ -1150,7 +1167,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 className="w-52 p-1.5 liquid-glass bg-[#0c101c]/95 create-dropdown-portal shadow-2xl space-y-0.5 border border-white/15"
               >
                 <div className="px-2 py-1 text-[10px] font-mono text-emerald-300/80 border-b border-white/10 mb-1">
-                  当前分类: 【{selectedCategory}】
+                  当前分类: 【{selectedCategoryId === 'ALL' ? '全部' : (categoryMap.get(selectedCategoryId) || '未分类')}】
                 </div>
 
                 <button
@@ -1181,7 +1198,7 @@ export const KnowledgeBasePage: React.FC = () => {
         open={showBatchExportModal}
         onClose={() => setShowBatchExportModal(false)}
         title="批量导出知识文档"
-        subtitle={`分类【${selectedCategory}】下的文档导出清单`}
+        subtitle={`分类【${selectedCategoryId === 'ALL' ? '全部' : (categoryMap.get(selectedCategoryId) || '未分类')}】下的文档导出清单`}
         icon={<Download className="w-5 h-5 text-cyan-300" />}
         footer={
           <div className="flex items-center justify-between w-full">

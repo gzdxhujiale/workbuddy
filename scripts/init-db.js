@@ -21,8 +21,26 @@ async function main() {
   // Clear existing data (for idempotency)
   await client.execute('DELETE FROM workspaces');
   await client.execute('DELETE FROM tasks');
-  await client.execute('DELETE FROM knowledge_bases');
   await client.execute('DELETE FROM schedule_events');
+
+  // Re-create tables with updated schema
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS knowledge_categories (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER DEFAULT NULL
+    );
+  `);
+  await client.execute('DELETE FROM knowledge_categories');
+
+  try {
+    await client.execute('ALTER TABLE knowledge_bases ADD COLUMN category_id TEXT DEFAULT NULL');
+  } catch (e) {
+    // Column may already exist
+  }
+  await client.execute('DELETE FROM knowledge_bases');
 
   // Insert Workspaces
   const workspaces = ['产品研发中心', '设计协同空间', 'AI 创新实验室', '市场运营中心'];
@@ -140,13 +158,29 @@ async function main() {
     });
   }
 
+  // Insert Knowledge Categories
+  const initialCategories = [
+    { id: 'cat-1', name: '产品文档', sort_order: 10, updated_at: Date.now() },
+    { id: 'cat-2', name: '设计规范', sort_order: 20, updated_at: Date.now() },
+    { id: 'cat-3', name: '技术文档', sort_order: 30, updated_at: Date.now() },
+    { id: 'cat-4', name: '测试文档', sort_order: 40, updated_at: Date.now() },
+    { id: 'cat-5', name: '通用文档', sort_order: 50, updated_at: Date.now() },
+  ];
+
+  for (const cat of initialCategories) {
+    await client.execute({
+      sql: 'INSERT INTO knowledge_categories (id, name, sort_order, updated_at, deleted_at) VALUES (?, ?, ?, ?, NULL)',
+      args: [cat.id, cat.name, cat.sort_order, cat.updated_at],
+    });
+  }
+
   // Insert Knowledge Bases (JSON AST Storage Format)
   const initialKnowledgeBases = [
     {
       id: 'kb-1',
       title: 'WenXiBuddy 2.0 需求规格说明书 (PRD)',
       sort_order: 10,
-      category: '产品文档',
+      category_id: 'cat-1',
       content: JSON.stringify({
         type: 'doc',
         content: [
@@ -170,7 +204,7 @@ async function main() {
       id: 'kb-2',
       title: 'Glassmorphism Design System 3D 规范',
       sort_order: 20,
-      category: '设计规范',
+      category_id: 'cat-2',
       content: JSON.stringify({
         type: 'doc',
         content: [
@@ -186,7 +220,7 @@ async function main() {
       id: 'kb-3',
       title: 'GraphQL & WebSocket 实时协议设计',
       sort_order: 30,
-      category: '技术文档',
+      category_id: 'cat-3',
       content: JSON.stringify({
         type: 'doc',
         content: [
@@ -202,7 +236,7 @@ async function main() {
       id: 'kb-4',
       title: '未分类草案与协同想法',
       sort_order: 40,
-      category: null,
+      category_id: null,
       content: JSON.stringify({
         type: 'doc',
         content: [
@@ -216,8 +250,8 @@ async function main() {
 
   for (const kb of initialKnowledgeBases) {
     await client.execute({
-      sql: 'INSERT INTO knowledge_bases (id, title, sort_order, category, content, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      args: [kb.id, kb.title, kb.sort_order, kb.category, kb.content, kb.updated_at, kb.deleted_at]
+      sql: 'INSERT INTO knowledge_bases (id, title, sort_order, category_id, content, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [kb.id, kb.title, kb.sort_order, kb.category_id, kb.content, kb.updated_at, kb.deleted_at]
     });
   }
 

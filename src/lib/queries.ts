@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { turso } from './db';
 import { apiClient } from './api-client';
-import { TaskItem, KnowledgeBase, TimeTask } from '@/types';
+import { TaskItem, KnowledgeBase, KnowledgeCategory, TimeTask } from '@/types';
 
 // Helper to safely fetch JSON without throwing SyntaxError on HTML fallbacks in dev mode
 async function safeFetchJson<T = any>(fn: () => Promise<Response>): Promise<T | null> {
@@ -211,6 +211,145 @@ export function useDeleteTask() {
   });
 }
 
+// Knowledge Base Categories
+export function useKnowledgeCategories() {
+  return useQuery({
+    queryKey: ['knowledge_categories'],
+    queryFn: async () => {
+      const data = await safeFetchJson<KnowledgeCategory[]>(() => apiClient.api.categories.$get());
+      if (data) return data;
+
+      const { rows } = await turso.execute(
+        'SELECT * FROM knowledge_categories WHERE deleted_at IS NULL ORDER BY sort_order ASC, updated_at DESC'
+      );
+      return rows.map((r: any) => ({
+        id: r.id as string,
+        name: r.name as string,
+        sortOrder: Number(r.sort_order || 0),
+        updatedAt: Number(r.updated_at),
+        deletedAt: r.deleted_at ? Number(r.deleted_at) : null,
+      })) as KnowledgeCategory[];
+    },
+  });
+}
+
+export function useAddKnowledgeCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (cat: { name: string; sortOrder?: number }) => {
+      const data = await safeFetchJson<{ id: string; name: string }>(() =>
+        apiClient.api.categories.$post({
+          json: {
+            name: cat.name,
+            sortOrder: cat.sortOrder ?? 0,
+          },
+        })
+      );
+      if (data && data.id) return data.id;
+
+      const id = `cat-${Date.now()}`;
+      const now = Date.now();
+
+      await turso.execute({
+        sql: 'INSERT INTO knowledge_categories (id, name, sort_order, updated_at, deleted_at) VALUES (?, ?, ?, ?, NULL)',
+        args: [id, cat.name, cat.sortOrder ?? 0, now],
+      });
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge_categories'] });
+    },
+  });
+}
+
+export function useUpdateKnowledgeCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, name, sortOrder }: { id: string; name?: string; sortOrder?: number }) => {
+      const data = await safeFetchJson(() =>
+        apiClient.api.categories[':id'].$put({
+          param: { id },
+          json: { name, sortOrder },
+        })
+      );
+      if (data) return;
+
+      const now = Date.now();
+      const existingRes = await turso.execute({
+        sql: 'SELECT * FROM knowledge_categories WHERE id = ? AND deleted_at IS NULL',
+        args: [id],
+      });
+      if (existingRes.rows.length === 0) return;
+      const existing = existingRes.rows[0];
+
+      const newName = name !== undefined ? name : existing.name;
+      const newSortOrder = sortOrder !== undefined ? sortOrder : existing.sort_order;
+
+      await turso.execute({
+        sql: 'UPDATE knowledge_categories SET name = ?, sort_order = ?, updated_at = ? WHERE id = ?',
+        args: [newName, newSortOrder, now, id],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge_categories'] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge_bases'] });
+    },
+  });
+}
+
+export function useReorderKnowledgeCategories() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (items: { id: string; sortOrder: number }[]) => {
+      const data = await safeFetchJson(() =>
+        apiClient.api.categories.reorder.$post({
+          json: { items },
+        })
+      );
+      if (data) return;
+
+      const now = Date.now();
+      for (const item of items) {
+        await turso.execute({
+          sql: 'UPDATE knowledge_categories SET sort_order = ?, updated_at = ? WHERE id = ?',
+          args: [item.sortOrder, now, item.id],
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge_categories'] });
+    },
+  });
+}
+
+export function useDeleteKnowledgeCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const now = Date.now();
+      await turso.execute({
+        sql: 'UPDATE knowledge_categories SET deleted_at = ? WHERE id = ?',
+        args: [now, id],
+      });
+
+      await turso.execute({
+        sql: 'UPDATE knowledge_bases SET category_id = NULL, updated_at = ? WHERE category_id = ? AND deleted_at IS NULL',
+        args: [now, id],
+      });
+
+      safeFetchJson(() =>
+        apiClient.api.categories[':id'].$delete({
+          param: { id },
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge_categories'] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge_bases'] });
+    },
+  });
+}
+
 // Knowledge Base Documents
 export function useKnowledgeBases() {
   return useQuery({
@@ -226,7 +365,7 @@ export function useKnowledgeBases() {
         id: r.id as string,
         title: r.title as string,
         sortOrder: Number(r.sort_order || 0),
-        category: r.category ? (r.category as string) : null,
+        categoryId: (r.category_id || r.category) ? (r.category_id || r.category as string) : null,
         content: (r.content as string) || '',
         updatedAt: Number(r.updated_at),
         deletedAt: r.deleted_at ? Number(r.deleted_at) : null,
@@ -244,7 +383,7 @@ export function useAddKnowledgeBase() {
           apiClient.api.documents.$post({
             json: {
               title: doc.title!,
-              category: doc.category || null,
+              categoryId: doc.categoryId || null,
               content: doc.content || '',
               sortOrder: doc.sortOrder ?? 0,
             },
@@ -255,11 +394,11 @@ export function useAddKnowledgeBase() {
 
       const id = `kb-${Date.now()}`;
       const now = Date.now();
-      const cat = doc.category || null;
+      const catId = doc.categoryId || null;
 
       await turso.execute({
-        sql: 'INSERT INTO knowledge_bases (id, title, sort_order, category, content, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, NULL)',
-        args: [id, doc.title || '无标题文档', doc.sortOrder ?? 0, cat, doc.content || '', now],
+        sql: 'INSERT INTO knowledge_bases (id, title, sort_order, category_id, content, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, NULL)',
+        args: [id, doc.title || '无标题文档', doc.sortOrder ?? 0, catId, doc.content || '', now],
       });
       return id;
     },
@@ -278,7 +417,7 @@ export function useUpdateKnowledgeBase() {
           param: { id },
           json: {
             title: doc.title,
-            category: doc.category !== undefined ? doc.category : undefined,
+            categoryId: doc.categoryId !== undefined ? doc.categoryId : undefined,
             content: doc.content,
             sortOrder: doc.sortOrder,
           },
@@ -295,13 +434,13 @@ export function useUpdateKnowledgeBase() {
       const existing = existingRes.rows[0];
 
       const newTitle = doc.title !== undefined ? doc.title : existing.title;
-      const newCategory = doc.category !== undefined ? doc.category : existing.category;
+      const newCategoryId = doc.categoryId !== undefined ? doc.categoryId : (existing.category_id || existing.category);
       const newContent = doc.content !== undefined ? doc.content : existing.content;
       const newSortOrder = doc.sortOrder !== undefined ? doc.sortOrder : existing.sort_order;
 
       await turso.execute({
-        sql: 'UPDATE knowledge_bases SET title = ?, category = ?, content = ?, sort_order = ?, updated_at = ? WHERE id = ?',
-        args: [newTitle, newCategory, newContent, newSortOrder, now, id],
+        sql: 'UPDATE knowledge_bases SET title = ?, category_id = ?, content = ?, sort_order = ?, updated_at = ? WHERE id = ?',
+        args: [newTitle, newCategoryId, newContent, newSortOrder, now, id],
       });
     },
     onSuccess: () => {
@@ -320,7 +459,6 @@ export function useSoftDeleteKnowledgeBase() {
         args: [now, id],
       });
 
-      // Optionally notify backend API in background
       safeFetchJson(() =>
         apiClient.api.documents[':id'].$delete({
           param: { id },

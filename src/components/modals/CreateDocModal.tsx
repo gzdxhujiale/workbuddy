@@ -1,46 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Plus, CheckCircle2 } from 'lucide-react';
 import { LiquidModal } from '@/components/ui/LiquidModal';
 import { LiquidSelect } from '@/components/ui/LiquidSelect';
-import { useAddKnowledgeBase } from '@/lib/queries';
+import { useAddKnowledgeBase, useKnowledgeCategories, useAddKnowledgeCategory } from '@/lib/queries';
 import { useToast } from '@/components/ui/Toast';
 import { motion } from 'framer-motion';
 
 interface CreateDocModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultCategory?: string;
+  defaultCategoryId?: string;
 }
 
 export const CreateDocModal: React.FC<CreateDocModalProps> = ({
   isOpen,
   onClose,
-  defaultCategory = '',
+  defaultCategoryId = '',
 }) => {
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState(defaultCategory);
-  const [categories, setCategories] = useState<string[]>([
-    '产品文档',
-    '设计规范',
-    '技术文档',
-    '测试文档',
-    'AI 算法',
-    '通用文档',
-  ]);
+  const [categoryId, setCategoryId] = useState(defaultCategoryId);
+  const { data: dbCategories = [] } = useKnowledgeCategories();
+  const addCategoryMutation = useAddKnowledgeCategory();
   const addKBMutation = useAddKnowledgeBase();
   const { show, ToastEl } = useToast();
 
-  const handleCreateCategory = (newCat: string) => {
-    if (!categories.includes(newCat)) {
-      setCategories((prev) => [...prev, newCat]);
-      show(`已新建分类：${newCat}`);
-    }
+  const handleCreateCategory = (newCatName: string) => {
+    addCategoryMutation.mutate(
+      { name: newCatName },
+      {
+        onSuccess: (newId) => {
+          setCategoryId(newId);
+          show(`已新建分类：${newCatName}`);
+        },
+      }
+    );
   };
 
-  const categoryOptions = [
-    { value: '', label: '未分类 (为空)' },
-    ...categories.map((c) => ({ value: c, label: c })),
-  ];
+  const categoryOptions = useMemo(() => {
+    return [
+      { value: '', label: '未分类 (为空)' },
+      ...dbCategories.map((c) => ({ value: c.id, label: c.name })),
+    ];
+  }, [dbCategories]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,8 +49,21 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
 
     addKBMutation.mutate({
       title: title.trim(),
-      category: category ? category : null,
-      content: `<h2>${title.trim()}</h2><p>点击此处开始撰写知识文档内容...</p>`,
+      categoryId: categoryId ? categoryId : null,
+      content: JSON.stringify({
+        type: 'doc',
+        content: [
+          {
+            type: 'heading',
+            attrs: { level: 2 },
+            content: [{ type: 'text', text: title.trim() }],
+          },
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: '点击此处开始撰写知识文档内容...' }],
+          },
+        ],
+      }),
     });
 
     setTitle('');
@@ -105,8 +119,8 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
           <div>
             <label className="block text-[11px] text-white/40 mb-1.5">所属分类</label>
             <LiquidSelect
-              value={category}
-              onChange={setCategory}
+              value={categoryId}
+              onChange={setCategoryId}
               options={categoryOptions}
               allowCreate={true}
               onCreateOption={handleCreateCategory}

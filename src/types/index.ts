@@ -66,11 +66,19 @@ export interface TimelineRow {
   highlighted?: boolean;
 }
 
+export interface KnowledgeCategory {
+  id: string;
+  name: string;
+  sortOrder: number;
+  updatedAt: number;
+  deletedAt: number | null;
+}
+
 export interface KnowledgeBase {
   id: string;
   title: string;
   sortOrder: number;
-  category: string | null; // NULL 表示在“全部”
+  categoryId: string | null; // NULL 表示在“全部”
   content: string;
   updatedAt: number; // Unix timestamp
   deletedAt: number | null; // 软删除标记

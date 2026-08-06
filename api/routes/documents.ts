@@ -5,21 +5,21 @@ import { db } from '../db.js';
 
 const createKnowledgeBaseSchema = z.object({
   title: z.string().min(1, '标题不能为空'),
-  category: z.string().nullable().optional(),
+  categoryId: z.string().nullable().optional(),
   content: z.string().default(''),
   sortOrder: z.number().default(0),
 });
 
 const updateKnowledgeBaseSchema = z.object({
   title: z.string().optional(),
-  category: z.string().nullable().optional(),
+  categoryId: z.string().nullable().optional(),
   content: z.string().optional(),
   sortOrder: z.number().optional(),
 });
 
 const batchCategorySchema = z.object({
-  fromCategory: z.string(),
-  toCategory: z.string().nullable(),
+  fromCategoryId: z.string().nullable(),
+  toCategoryId: z.string().nullable(),
 });
 
 export const documentsRouter = new Hono()
@@ -34,7 +34,7 @@ export const documentsRouter = new Hono()
         id: r.id as string,
         title: r.title as string,
         sortOrder: Number(r.sort_order || 0),
-        category: r.category ? (r.category as string) : null,
+        categoryId: (r.category_id || r.category) ? (r.category_id || r.category) as string : null,
         content: (r.content as string) || '',
         updatedAt: Number(r.updated_at),
         deletedAt: r.deleted_at ? Number(r.deleted_at) : null,
@@ -52,11 +52,11 @@ export const documentsRouter = new Hono()
       const data = c.req.valid('json');
       const id = `kb-${Date.now()}`;
       const now = Date.now();
-      const category = data.category || null;
+      const categoryId = data.categoryId || null;
 
       await db.execute({
-        sql: 'INSERT INTO knowledge_bases (id, title, sort_order, category, content, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, NULL)',
-        args: [id, data.title, data.sortOrder ?? 0, category, data.content || '', now],
+        sql: 'INSERT INTO knowledge_bases (id, title, sort_order, category_id, content, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, NULL)',
+        args: [id, data.title, data.sortOrder ?? 0, categoryId, data.content || '', now],
       });
 
       return c.json({ success: true, id }, 201);
@@ -69,13 +69,20 @@ export const documentsRouter = new Hono()
   .post('/batch-category', zValidator('json', batchCategorySchema), async (c) => {
     try {
       if (!db) return c.json({ success: false, error: 'Database not configured' }, 500);
-      const { fromCategory, toCategory } = c.req.valid('json');
+      const { fromCategoryId, toCategoryId } = c.req.valid('json');
       const now = Date.now();
 
-      await db.execute({
-        sql: 'UPDATE knowledge_bases SET category = ?, updated_at = ? WHERE category = ? AND deleted_at IS NULL',
-        args: [toCategory, now, fromCategory],
-      });
+      if (fromCategoryId === null) {
+        await db.execute({
+          sql: 'UPDATE knowledge_bases SET category_id = ?, updated_at = ? WHERE category_id IS NULL AND deleted_at IS NULL',
+          args: [toCategoryId, now],
+        });
+      } else {
+        await db.execute({
+          sql: 'UPDATE knowledge_bases SET category_id = ?, updated_at = ? WHERE category_id = ? AND deleted_at IS NULL',
+          args: [toCategoryId, now, fromCategoryId],
+        });
+      }
 
       return c.json({ success: true });
     } catch (err: any) {
@@ -102,13 +109,13 @@ export const documentsRouter = new Hono()
 
       const existing = existingRes.rows[0];
       const newTitle = data.title !== undefined ? data.title : existing.title;
-      const newCategory = data.category !== undefined ? data.category : existing.category;
+      const newCategoryId = data.categoryId !== undefined ? data.categoryId : (existing.category_id || existing.category);
       const newContent = data.content !== undefined ? data.content : existing.content;
       const newSortOrder = data.sortOrder !== undefined ? data.sortOrder : existing.sort_order;
 
       await db.execute({
-        sql: 'UPDATE knowledge_bases SET title = ?, category = ?, content = ?, sort_order = ?, updated_at = ? WHERE id = ?',
-        args: [newTitle, newCategory, newContent, newSortOrder, now, id],
+        sql: 'UPDATE knowledge_bases SET title = ?, category_id = ?, content = ?, sort_order = ?, updated_at = ? WHERE id = ?',
+        args: [newTitle, newCategoryId, newContent, newSortOrder, now, id],
       });
 
       return c.json({ success: true, updatedAt: now });
